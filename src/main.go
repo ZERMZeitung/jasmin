@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/gomarkdown/markdown"
 )
@@ -14,7 +15,23 @@ func main() {
 			fmt.Fprintln(w, "WTF are you tryin to achieve?! This is GET only.")
 			return
 		}
-		w.Write(markdown.ToHTML([]byte("## Ehre"), nil, nil))
+		file, err := os.OpenFile("README.md", os.O_RDONLY, 0o644)
+		if err != nil {
+			w.WriteHeader(500)
+			fmt.Fprintln(w, err)
+			return
+		}
+		defer file.Close()
+		stat, err := file.Stat()
+		if err != nil {
+			w.WriteHeader(500)
+			fmt.Fprintln(w, err)
+			return
+		}
+		md := make([]byte, stat.Size())
+		//TODO: err handling
+		file.Read(md)
+		w.Write(markdown.ToHTML(md, nil, nil))
 	})
 
 	http.ListenAndServe(":8099", nil)
