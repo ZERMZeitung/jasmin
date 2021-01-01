@@ -17,6 +17,7 @@ type article struct {
 	Published time.Time
 }
 
+//caching this would improve performance and sounds like a good idea
 func parseArticles() ([]article, error) {
 	file, err := os.OpenFile("../zerm.eu/articles.csv", os.O_RDONLY, 0o644)
 	if err != nil {
@@ -90,9 +91,7 @@ func main() {
 			}
 
 			fmt.Fprint(w, "</ul></body></html>")
-		}
-
-		if strings.HasPrefix(path, "/zerm") {
+		} else if strings.HasPrefix(path, "/zerm") {
 			//so far havent managed to exploit, but it should work in theory:
 			//echo 'GET /zerm/../../../../etc/passwd HTTP/1.1
 			//Host: localhost:8099
@@ -100,7 +99,7 @@ func main() {
 			//Accept: */*
 			//' |nc localhost 8099
 			//TODO: check this
-			path = "../zerm.eu" + path
+			path = "../zerm.eu" + path + ".md"
 
 			file, err := os.OpenFile(path, os.O_RDONLY, 0o644)
 			if err != nil {
@@ -119,6 +118,27 @@ func main() {
 			//TODO: err handling
 			file.Read(md)
 			w.Write(markdown.ToHTML(md, nil, nil))
+		} else {
+			//TODO: check this
+			path = "../zerm.eu" + path
+
+			file, err := os.OpenFile(path, os.O_RDONLY, 0o644)
+			if err != nil {
+				internalServerError(w, err)
+				return
+			}
+			defer file.Close()
+
+			stat, err := file.Stat()
+			if err != nil {
+				internalServerError(w, err)
+				return
+			}
+
+			b := make([]byte, stat.Size())
+			//TODO: err handling
+			file.Read(b)
+			w.Write(b)
 		}
 	})
 
