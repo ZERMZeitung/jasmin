@@ -91,6 +91,29 @@ func main() {
 			}
 
 			fmt.Fprint(w, "</ul></body></html>")
+		} else if path == "/sitemap.xml" {
+			articles, err := parseArticles()
+			if err != nil {
+				internalServerError(w, err)
+				return
+			}
+
+			fmt.Fprintln(w, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
+			fmt.Fprintln(w, "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">")
+			fmt.Fprintln(w, "<url><loc>https://zerm.eu/</loc><changefreq>daily</changefreq></url>")
+			y := time.Now().Year()
+			fmt.Fprintf(w, "<url><loc>https://zerm.eu/%d.html</loc><changefreq>daily</changefreq></url>\n", y)
+			for y--; y >= 2019; y-- {
+				fmt.Fprintf(w, "<url><loc>https://zerm.eu/%d.html</loc><changefreq>monthly</changefreq></url>\n", y)
+			}
+
+			for _, article := range articles {
+				fmt.Fprintf(w, "<url><loc>https://zerm.eu/zerm/%s.html</loc><changefreq>monthly</changefreq></url>\n", article.ID)
+			}
+
+			fmt.Fprintln(w, "</urlset>")
+		} else if path == "/rss.xml" {
+			//TODO: make rss work
 		} else if strings.HasPrefix(path, "/zerm") {
 			//so far havent managed to exploit, but it should work in theory:
 			//echo 'GET /zerm/../../../../etc/passwd HTTP/1.1
