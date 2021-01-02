@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -42,6 +43,40 @@ func parseArticles() ([]article, error) {
 	return articles, nil
 }
 
+func getHTMLArticle(reqURI string) ([]byte, error) {
+	//so far havent managed to exploit, but it should work in theory:
+	//echo 'GET /zerm/../../../../etc/passwd HTTP/1.1
+	//Host: localhost:8099
+	//User-Agent: curl/7.64.1
+	//Accept: */*
+	//' |nc localhost 8099
+	//TODO: check this
+	path := "../zerm.eu/zerm" + reqURI + ".md"
+
+	file, err := os.OpenFile(path, os.O_RDONLY, 0o644)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	stat, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+	size := stat.Size()
+
+	md := make([]byte, size)
+	n, err := file.Read(md)
+	if err != nil {
+		return nil, err
+	}
+	if int64(n) < size {
+		return nil, errors.New("Can't read the full markdown file apparently")
+	}
+
+	return markdown.ToHTML(md, nil, nil), nil
+}
+
 func internalServerError(w http.ResponseWriter, err error) {
 	w.WriteHeader(http.StatusInternalServerError)
 	fmt.Fprintln(w, err)
@@ -54,12 +89,7 @@ func main() {
 		if r.Method != "GET" {
 			w.WriteHeader(http.StatusBadRequest)
 			fmt.Fprintln(w, "WTF are you tryin to achieve?! This is GET only.")
-			return
-		}
-
-		path := r.RequestURI
-
-		if path == "/" || strings.HasPrefix(path, "/index") {
+		} else if r.RequestURI == "/" || strings.HasPrefix(r.RequestURI, "/index") {
 			articles, err := parseArticles()
 			if err != nil {
 				internalServerError(w, err)
@@ -91,7 +121,7 @@ func main() {
 			}
 
 			fmt.Fprint(w, "</ul></body></html>")
-		} else if path == "/sitemap.xml" {
+		} else if r.RequestURI == "/sitemap.xml" {
 			articles, err := parseArticles()
 			if err != nil {
 				internalServerError(w, err)
@@ -112,38 +142,50 @@ func main() {
 			}
 
 			fmt.Fprintln(w, "</urlset>")
-		} else if path == "/rss.xml" {
-			//TODO: make rss work
-		} else if strings.HasPrefix(path, "/zerm") {
-			//so far havent managed to exploit, but it should work in theory:
-			//echo 'GET /zerm/../../../../etc/passwd HTTP/1.1
-			//Host: localhost:8099
-			//User-Agent: curl/7.64.1
-			//Accept: */*
-			//' |nc localhost 8099
-			//TODO: check this
-			path = "../zerm.eu" + path + ".md"
-
-			file, err := os.OpenFile(path, os.O_RDONLY, 0o644)
-			if err != nil {
-				internalServerError(w, err)
-				return
-			}
-			defer file.Close()
-
-			stat, err := file.Stat()
+		} else if r.RequestURI == "/rss.xml" {
+			articles, err := parseArticles()
 			if err != nil {
 				internalServerError(w, err)
 				return
 			}
 
-			md := make([]byte, stat.Size())
-			//TODO: err handling
-			file.Read(md)
-			w.Write(markdown.ToHTML(md, nil, nil))
+			fmt.Fprintln(w, "<?xml version=\"1.0\" encoding=\"utf-8\"?>")
+			fmt.Fprintln(w, "<?xml-stylesheet type=\"text/css\" href=\"rss.css\" ?>")
+			fmt.Fprintln(w, "<rss version=\"2.0\" xmlns:atom=\"http://www.w3.org/2005/Atom\">")
+			fmt.Fprintln(w, "<channel>")
+			fmt.Fprintln(w, "<title>ZERM Artikel</title>")
+			fmt.Fprintln(w, "<description>Alle Artikel der Zeitung zur Erhaltung der Rechte des Menschen.</description>")
+			fmt.Fprintln(w, "<language>de-de</language>")
+			fmt.Fprintln(w, "<link>https://zerm.eu/rss.xml</link>")
+			fmt.Fprintln(w, "<atom:link href=\"https://zerm.eu/rss.xml\" rel=\"self\" type=\"application/rss+xml\" />")
+
+			for _, article := range articles {
+				fmt.Fprintln(w, "<item>")
+				fmt.Fprintf(w, "<title>%s</title>\n", article.Title)
+				fmt.Fprintf(w, "<guid>https://zerm.eu/%d.html#%s</guid>\n", article.Published.Year(), article.ID)
+				fmt.Fprintf(w, "<pubDate>%s</pubDate>\n", article.Published.Format("Mon, 2 Jan 2006 15:04:05 -0700"))
+				fmt.Fprintln(w, "<description><![CDATA[")
+
+				html, err := getHTMLArticle("/" + article.ID)
+				if err != nil {
+					fmt.Fprintln(w, err)
+				} else {
+					w.Write(html)
+					fmt.Fprintln(w)
+				}
+
+				fmt.Fprintln(w, "]]></description>")
+			}
+		} else if strings.HasPrefix(r.RequestURI, "/zerm") {
+			html, err := getHTMLArticle(r.RequestURI)
+			if err != nil {
+				internalServerError(w, err)
+			} else {
+				w.Write(html)
+			}
 		} else {
 			//TODO: check this
-			path = "../zerm.eu" + path
+			path := "../zerm.eu" + r.RequestURI
 
 			file, err := os.OpenFile(path, os.O_RDONLY, 0o644)
 			if err != nil {
