@@ -45,10 +45,13 @@ func parseArticles() ([]article, error) {
 	return articles, nil
 }
 
-//TODO: auto-numbering
-func makeQuotesWork(raw []byte) []byte {
-	cum := regexp.MustCompile("\\{").ReplaceAll(raw, []byte("[<sup>"))
-	return regexp.MustCompile("\\}").ReplaceAll(cum, []byte("</sup>]"))
+func quoteResolve(raw []byte) []byte {
+	i := 0
+	cum := regexp.MustCompile("\\{").ReplaceAllFunc(raw, func(b []byte) []byte {
+		i++
+		return []byte(fmt.Sprintf("<sup>[%d](", i))
+	})
+	return regexp.MustCompile("\\}").ReplaceAll(cum, []byte(")</sup>"))
 }
 
 func getHTMLArticle(reqURI string) ([]byte, error) {
@@ -82,7 +85,7 @@ func getHTMLArticle(reqURI string) ([]byte, error) {
 		return nil, errors.New("Can't read the full markdown file apparently")
 	}
 
-	return markdown.ToHTML(makeQuotesWork(md), nil, nil), nil
+	return markdown.ToHTML(quoteResolve(md), nil, nil), nil
 }
 
 func internalServerError(w http.ResponseWriter, err error) {
