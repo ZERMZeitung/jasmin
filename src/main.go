@@ -20,7 +20,7 @@ type article struct {
 	Published time.Time
 }
 
-//caching this would improve performance and sounds like a good idea
+//TODO: caching this would improve performance and sounds like a good idea
 func parseArticles() ([]article, error) {
 	file, err := os.OpenFile("../zerm.eu/articles.csv", os.O_RDONLY, 0o644)
 	if err != nil {
@@ -49,9 +49,9 @@ func quoteResolve(raw []byte) []byte {
 	i := 0
 	cum := regexp.MustCompile("\\{").ReplaceAllFunc(raw, func(b []byte) []byte {
 		i++
-		return []byte(fmt.Sprintf("<sup>[%d](", i))
+		return []byte(fmt.Sprintf("[<sup>[%d]</sup>](", i))
 	})
-	return regexp.MustCompile("\\}").ReplaceAll(cum, []byte(")</sup>"))
+	return regexp.MustCompile("\\}").ReplaceAll(cum, []byte(")"))
 }
 
 func getHTMLArticle(reqURI string) ([]byte, error) {
@@ -62,7 +62,7 @@ func getHTMLArticle(reqURI string) ([]byte, error) {
 	//Accept: */*
 	//' |nc localhost 8099
 	//TODO: check this
-	path := "../zerm.eu/zerm" + reqURI + ".md"
+	path := "../zerm.eu" + reqURI + ".md"
 
 	file, err := os.OpenFile(path, os.O_RDONLY, 0o644)
 	if err != nil {
@@ -93,6 +93,7 @@ func internalServerError(w http.ResponseWriter, err error) {
 	fmt.Fprintln(w, err)
 }
 
+//TODO: logo exception for Safari because the font is broken
 const logo = "<text class='logo1'>ZERM</text><text class='logo2'>ONLINE</text>"
 
 func main() {
@@ -126,7 +127,7 @@ func main() {
 				fmt.Fprint(w, article.Published.Format("02.01.2006"))
 				fmt.Fprint(w, " &ndash; <a href='zerm/")
 				fmt.Fprint(w, article.ID)
-				fmt.Fprint(w, ".html'>")
+				fmt.Fprint(w, "'>")
 				fmt.Fprint(w, article.Title)
 				fmt.Fprint(w, "</a></li>")
 			}
@@ -177,7 +178,7 @@ func main() {
 				fmt.Fprintf(w, "<pubDate>%s</pubDate>\n", article.Published.Format("Mon, 2 Jan 2006 15:04:05 -0700"))
 				fmt.Fprintln(w, "<description><![CDATA[")
 
-				html, err := getHTMLArticle("/" + article.ID)
+				html, err := getHTMLArticle("/zerm/" + article.ID)
 				if err != nil {
 					fmt.Fprintln(w, err)
 				} else {
@@ -188,12 +189,46 @@ func main() {
 				fmt.Fprintln(w, "]]></description>")
 			}
 		} else if strings.HasPrefix(r.RequestURI, "/zerm") {
+			articles, err := parseArticles()
+			if err != nil {
+				internalServerError(w, err)
+				return
+			}
+
+			var article article
+			found := false
+
+			for _, a := range articles {
+				if "/zerm/"+a.ID == r.RequestURI {
+					article = a
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				http.NotFound(w, r)
+				return
+			}
+
 			html, err := getHTMLArticle(r.RequestURI)
 			if err != nil {
 				internalServerError(w, err)
-			} else {
-				w.Write(html)
+				return
 			}
+
+			fmt.Fprint(w, "<html><head><title>")
+			fmt.Fprint(w, article.Title)
+			fmt.Fprint(w, "</title>")
+			fmt.Fprint(w, "<link rel='stylesheet' type='text/css' href='../style.css'>")
+			fmt.Fprint(w, "</head><body><a href='../index.html'>zurück</a><h1>")
+			fmt.Fprint(w, article.Title)
+			fmt.Fprint(w, "</h1>")
+			w.Write(html)
+			fmt.Fprint(w, "<br/><br/><footer>von <strong>")
+			//produces extra paragraphs, should be removed
+			w.Write(markdown.ToHTML([]byte(article.Author), nil, nil))
+			fmt.Fprint(w, "</strong></footer></body></html>")
 		} else {
 			//TODO: check this
 			path := "../zerm.eu" + r.RequestURI
