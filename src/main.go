@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 )
 
 type article struct {
+	Author    string
 	ID        string
 	Title     string
 	Published time.Time
@@ -37,10 +39,16 @@ func parseArticles() ([]article, error) {
 		if err != nil {
 			return nil, err
 		}
-		articles[i] = article{ID: line[1], Title: line[2], Published: pub}
+		articles[i] = article{Author: line[3], ID: line[1], Title: line[2], Published: pub}
 	}
 
 	return articles, nil
+}
+
+//TODO: auto-numbering
+func makeQuotesWork(raw []byte) []byte {
+	cum := regexp.MustCompile("\\{").ReplaceAll(raw, []byte("[<sup>"))
+	return regexp.MustCompile("\\}").ReplaceAll(cum, []byte("</sup>]"))
 }
 
 func getHTMLArticle(reqURI string) ([]byte, error) {
@@ -74,7 +82,7 @@ func getHTMLArticle(reqURI string) ([]byte, error) {
 		return nil, errors.New("Can't read the full markdown file apparently")
 	}
 
-	return markdown.ToHTML(md, nil, nil), nil
+	return markdown.ToHTML(makeQuotesWork(md), nil, nil), nil
 }
 
 func internalServerError(w http.ResponseWriter, err error) {
