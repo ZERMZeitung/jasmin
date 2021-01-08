@@ -45,47 +45,61 @@ func parseArticles() ([]article, error) {
 	return articles, nil
 }
 
-func quoteResolve(raw []byte) []byte {
-	i := 0
-	cum := regexp.MustCompile("\\{").ReplaceAllFunc(raw, func(b []byte) []byte {
-		i++
-		return []byte(fmt.Sprintf("[<sup>[%d]</sup>](", i))
-	})
-	return regexp.MustCompile("\\}").ReplaceAll(cum, []byte(")"))
+func quotePreprocess(raw []byte) []byte {
+	cum := regexp.MustCompile("\\\\{").ReplaceAll(raw, []byte("[\\ob\\ich\\lost\\bin]("))
+	return regexp.MustCompile("\\\\}").ReplaceAll(cum, []byte(")"))
 }
 
-func getHTMLArticle(reqURI string) ([]byte, error) {
+func quotePostprocess(raw []byte) []byte {
+	i := 0
+	return regexp.MustCompile("\\\\ob\\\\ich\\\\lost\\\\bin").ReplaceAllFunc(raw, func(b []byte) []byte {
+		i++
+		return []byte(fmt.Sprintf("<sup>[%d]</sup>", i))
+	})
+}
+
+func readFile(file string) ([]byte, error) {
 	//so far havent managed to exploit, but it should work in theory:
-	//echo 'GET /zerm/../../../../etc/passwd HTTP/1.1
+	//echo 'GET /../../../etc/passwd HTTP/1.1
 	//Host: localhost:8099
 	//User-Agent: curl/7.64.1
 	//Accept: */*
 	//' |nc localhost 8099
-	//TODO: check this
-	path := "../zerm.eu" + reqURI + ".md"
+	//TODO: return error if file contains ..
+	path := "../zerm.eu" + file
 
-	file, err := os.OpenFile(path, os.O_RDONLY, 0o644)
+	f, err := os.OpenFile(path, os.O_RDONLY, 0o644)
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer f.Close()
 
-	stat, err := file.Stat()
+	stat, err := f.Stat()
 	if err != nil {
 		return nil, err
 	}
 	size := stat.Size()
 
-	md := make([]byte, size)
-	n, err := file.Read(md)
+	b := make([]byte, size)
+	n, err := f.Read(b)
 	if err != nil {
 		return nil, err
 	}
 	if int64(n) < size {
-		return nil, errors.New("Can't read the full markdown file apparently")
+		return nil, errors.New("Can't read the full file apparently")
 	}
 
-	return markdown.ToHTML(quoteResolve(md), nil, nil), nil
+	return b, nil
+}
+
+func getHTMLArticle(reqURI string) ([]byte, error) {
+	md, err := readFile(reqURI + ".md")
+
+	if err != nil {
+		return nil, err
+	}
+
+	return quotePostprocess(markdown.ToHTML(quotePreprocess(md), nil, nil)), nil
 }
 
 func internalServerError(w http.ResponseWriter, err error) {
@@ -217,6 +231,12 @@ func main() {
 				return
 			}
 
+			author, err := readFile("/authors/" + article.Author + ".html")
+			if err != nil {
+				internalServerError(w, err)
+				return
+			}
+
 			fmt.Fprint(w, "<html><head><title>")
 			fmt.Fprint(w, article.Title)
 			fmt.Fprint(w, "</title>")
@@ -225,30 +245,17 @@ func main() {
 			fmt.Fprint(w, article.Title)
 			fmt.Fprint(w, "</h1>")
 			w.Write(html)
-			fmt.Fprint(w, "<br/><br/><footer>von <strong>")
-			//produces extra paragraphs, should be removed
-			w.Write(markdown.ToHTML([]byte(article.Author), nil, nil))
+			fmt.Fprint(w, "<br/><footer>von <strong>")
+			w.Write(author)
 			fmt.Fprint(w, "</strong></footer></body></html>")
 		} else {
-			//TODO: check this
-			path := "../zerm.eu" + r.RequestURI
+			b, err := readFile(r.RequestURI)
 
-			file, err := os.OpenFile(path, os.O_RDONLY, 0o644)
 			if err != nil {
-				internalServerError(w, err)
-				return
-			}
-			defer file.Close()
-
-			stat, err := file.Stat()
-			if err != nil {
-				internalServerError(w, err)
+				http.NotFound(w, r)
 				return
 			}
 
-			b := make([]byte, stat.Size())
-			//TODO: err handling
-			file.Read(b)
 			w.Write(b)
 		}
 	})
