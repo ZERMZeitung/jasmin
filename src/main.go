@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -131,7 +132,7 @@ func main() {
 			fmt.Fprint(w, logo)
 			fmt.Fprint(w, "<br/><br/>")
 			for y := time.Now().Year(); y >= 2019; y-- {
-				fmt.Fprintf(w, "<a href='%d.html'>GA %d</a> ", y, y)
+				fmt.Fprintf(w, "<a href='%d'>GA %d</a> ", y, y)
 			}
 			fmt.Fprint(w, "<a href='rss.xml'>RSS Feed</a>")
 			fmt.Fprint(w, "<ul>")
@@ -241,13 +242,66 @@ func main() {
 			fmt.Fprint(w, article.Title)
 			fmt.Fprint(w, "</title>")
 			fmt.Fprint(w, "<link rel='stylesheet' type='text/css' href='../style.css'>")
-			fmt.Fprint(w, "</head><body><a href='../index.html'>zurück</a><h1>")
+			fmt.Fprint(w, "</head><body><a href='/'>zurück</a><h1>")
 			fmt.Fprint(w, article.Title)
 			fmt.Fprint(w, "</h1>")
 			w.Write(html)
 			fmt.Fprint(w, "<br/><footer>von <strong>")
 			w.Write(author)
 			fmt.Fprint(w, "</strong></footer></body></html>")
+		} else if regexp.MustCompile("^/20[0-9]{2}$").MatchString(r.RequestURI) {
+			year, err := strconv.ParseUint(strings.TrimPrefix(r.RequestURI, "/"), 10, 23)
+			if err != nil {
+				internalServerError(w, err)
+				return
+			}
+
+			articles, err := parseArticles()
+			if err != nil {
+				internalServerError(w, err)
+				return
+			}
+
+			fmt.Fprint(w, "<html><head><title>ZERM GA ", year)
+			fmt.Fprint(w, "</title><meta charset='utf-8'/>")
+			fmt.Fprint(w, "<link rel='stylesheet' type='text/css' href='style.css'>")
+			fmt.Fprint(w, "</head><body>")
+			fmt.Fprint(w, "<text class='logo1'>ZERM</text>")
+			fmt.Fprint(w, "<text class='logo2'>ONLINE</text>")
+			fmt.Fprint(w, "<text class='logo1'>G</text>")
+			fmt.Fprint(w, "<text class='logo2'>esamt</text>")
+			fmt.Fprint(w, "<text class='logo1'>A</text>")
+			fmt.Fprint(w, "<text class='logo2'>usgabe</text>")
+			fmt.Fprint(w, "<text class='logo1'>", year, "</text>")
+
+			//TODO: if file exists
+			fmt.Fprint(w, "<p><i>Die Druckversion finden Sie auch als <a href='")
+			fmt.Fprint(w, year, ".pdf'>PDF</a> mit einer <a href='", year)
+			fmt.Fprint(w, ".svg'>separaten Vorderseite</a>.</i></p>")
+
+			for _, article := range articles {
+				if article.Published.Year() != int(year) {
+					continue
+				}
+				fmt.Fprint(w, "<div class='entry'>")
+				fmt.Fprint(w, "<h2 id='", article.ID, "'>", article.Title, "</h2>")
+				fmt.Fprint(w, "<small>[<a href='#", article.ID, "'>link</a>&mdash;")
+				fmt.Fprint(w, "<a href='zerm/", article.ID, ".html'>standalone</a>]")
+				fmt.Fprint(w, "</small><br/>")
+
+				html, err := getHTMLArticle("/zerm/" + article.ID)
+				if err != nil {
+					fmt.Fprintln(w, err)
+				} else {
+					w.Write(html)
+					fmt.Fprintln(w)
+				}
+
+				//TODO: we might want to put the author(s) here too
+				fmt.Fprint(w, "<small>", article.Published.Format("02.01.2006 15:04:05 MST"), "</small></div>")
+			}
+
+			fmt.Fprint(w, "</body></html>")
 		} else {
 			b, err := readFile(r.RequestURI)
 
