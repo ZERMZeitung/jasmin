@@ -21,7 +21,7 @@ type article struct {
 	Published time.Time
 }
 
-//TODO: caching this would improve performance and sounds like a good idea
+//TODO: caching this improves performance and sounds like a good idea generally
 func parseArticles() ([]article, error) {
 	file, err := os.OpenFile("../zerm.eu/articles.csv", os.O_RDONLY, 0o644)
 	if err != nil {
@@ -60,13 +60,11 @@ func quotePostprocess(raw []byte) []byte {
 }
 
 func readFile(file string) ([]byte, error) {
-	//so far havent managed to exploit, but it should work in theory:
-	//echo 'GET /../../../etc/passwd HTTP/1.1
-	//Host: localhost:8099
-	//User-Agent: curl/7.64.1
-	//Accept: */*
-	//' |nc localhost 8099
-	//TODO: return error if file contains ..
+	//prevents attacks like GET /../../../etc/passwd
+	if strings.Contains(file, "..") {
+		return nil, errors.New("File path contains \"..\"")
+	}
+
 	path := "../zerm.eu" + file
 
 	f, err := os.OpenFile(path, os.O_RDONLY, 0o644)
@@ -274,10 +272,13 @@ func main() {
 			fmt.Fprint(w, "<text class='logo2'>usgabe</text>")
 			fmt.Fprint(w, "<text class='logo1'>", year, "</text>")
 
-			//TODO: if file exists
-			fmt.Fprint(w, "<p><i>Die Druckversion finden Sie auch als <a href='")
-			fmt.Fprint(w, year, ".pdf'>PDF</a> mit einer <a href='", year)
-			fmt.Fprint(w, ".svg'>separaten Vorderseite</a>.</i></p>")
+			_, e1 := readFile(fmt.Sprint("/", year, ".pdf"))
+			_, e2 := readFile(fmt.Sprint("/", year, ".svg"))
+			if e1 == nil && e2 == nil {
+				fmt.Fprint(w, "<p><i>Die Druckversion finden Sie auch als <a href='")
+				fmt.Fprint(w, year, ".pdf'>PDF</a> mit einer <a href='", year)
+				fmt.Fprint(w, ".svg'>separaten Vorderseite</a>.</i></p>")
+			}
 
 			for _, article := range articles {
 				if article.Published.Year() != int(year) {
@@ -289,6 +290,7 @@ func main() {
 				fmt.Fprint(w, "<a href='zerm/", article.ID, ".html'>standalone</a>]")
 				fmt.Fprint(w, "</small><br/>")
 
+				//TODO: check why the speeches break
 				html, err := getHTMLArticle("/zerm/" + article.ID)
 				if err != nil {
 					fmt.Fprintln(w, err)
