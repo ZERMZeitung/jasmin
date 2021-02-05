@@ -299,7 +299,7 @@ func main() {
 					fmt.Fprintln(w)
 				}
 
-				//TODO: we might want to put the author(s) here too
+				fmt.Fprint(w, "<br/><footer>von <strong>", article.Author, "</strong></footer>")
 				fmt.Fprint(w, "<small>", article.Published.Format("02.01.2006 15:04:05 MST"), "</small></div>")
 			}
 
