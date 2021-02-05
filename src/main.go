@@ -299,7 +299,13 @@ func main() {
 					fmt.Fprintln(w)
 				}
 
-				fmt.Fprint(w, "<br/><footer>von <strong>", article.Author, "</strong></footer>")
+				author, err := readFile("/authors/" + article.Author + ".html")
+				if err != nil {
+					internalServerError(w, err)
+				} else {
+					fmt.Fprint(w, "<br/><footer>von <strong>", author, "</strong></footer>")
+				}
+
 				fmt.Fprint(w, "<small>", article.Published.Format("02.01.2006 15:04:05 MST"), "</small></div>")
 			}
 
