@@ -303,7 +303,9 @@ func main() {
 				if err != nil {
 					internalServerError(w, err)
 				} else {
-					fmt.Fprint(w, "<br/><footer>von <strong>", author, "</strong></footer>")
+					fmt.Fprint(w, "<small>von <strong>")
+					w.Write(author)
+					fmt.Fprint(w, "</strong></small><br/>")
 				}
 
 				fmt.Fprint(w, "<small>", article.Published.Format("02.01.2006 15:04:05 MST"), "</small></div>")
