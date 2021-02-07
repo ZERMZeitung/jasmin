@@ -14,6 +14,8 @@ import (
 	"github.com/gomarkdown/markdown"
 )
 
+//TODO: integrate zerm.link
+
 type article struct {
 	Author    string
 	ID        string
@@ -95,7 +97,6 @@ func readFile(file string) ([]byte, error) {
 
 func getHTMLArticle(reqURI string) ([]byte, error) {
 	md, err := readFile(reqURI + ".md")
-
 	if err != nil {
 		return nil, err
 	}
