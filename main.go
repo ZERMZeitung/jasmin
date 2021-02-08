@@ -19,6 +19,7 @@ import (
 // - logging
 // - logo exception for Safari because the font is broken
 // - cache md or maybe even html articles
+// - sort articles by datetime
 
 type article struct {
 	Author    string
@@ -62,7 +63,6 @@ func genShortLut() (map[string]string, error) {
 }
 
 func update() error {
-	log.Println("[update()] updating...")
 	articles, err := parseArticles()
 	if err != nil {
 		log.Println("[update()] articles: ", err)
@@ -164,7 +164,7 @@ func main() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Got an %s request from %s (%s): %s (%s)",
 			r.Proto, r.RemoteAddr, r.UserAgent(), r.URL.Path, r.Host)
-		if lastUpdate.Add(1000_000000).Before(time.Now()) {
+		if lastUpdate.Add(60_000000000).Before(time.Now()) {
 			update()
 		}
 		if r.Method != "GET" {
