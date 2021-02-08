@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"regexp"
@@ -15,6 +16,8 @@ import (
 )
 
 //TODO: integrate zerm.link
+//TODO: logging
+//TODO: logo exception for Safari because the font is broken
 
 type article struct {
 	Author    string
@@ -24,16 +27,11 @@ type article struct {
 }
 
 var allArticles []article
-var lastArticleUpdate = time.Unix(0, 0)
+var shortLut map[string]string
+var lastUpdate = time.Unix(0, 0)
 
 func parseArticles() ([]article, error) {
-	file, err := os.OpenFile("../zerm.eu/articles.csv", os.O_RDONLY, 0o644)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	lines, err := csv.NewReader(file).ReadAll()
+	lines, err := readCsv("/articles.csv")
 	if err != nil {
 		return nil, err
 	}
@@ -50,6 +48,19 @@ func parseArticles() ([]article, error) {
 	return articles, nil
 }
 
+func parseShortLut() (map[string]string, error) {
+	//TODO: move to the top
+	lines, err := readCsv("/zm/short.csv")
+	if err != nil {
+		return nil, err
+	}
+	lut := make(map[string]string, len(lines))
+	for _, line := range lines {
+		lut["/"+line[0]] = line[1]
+	}
+	return lut, nil
+}
+
 func quotePreprocess(raw []byte) []byte {
 	cum := regexp.MustCompile("\\\\{").ReplaceAll(raw, []byte("[\\ob\\ich\\lost\\bin]("))
 	return regexp.MustCompile("\\\\}").ReplaceAll(cum, []byte(")"))
@@ -61,6 +72,16 @@ func quotePostprocess(raw []byte) []byte {
 		i++
 		return []byte(fmt.Sprintf("<sup>[%d]</sup>", i))
 	})
+}
+
+func readCsv(file string) ([][]string, error) {
+	f, err := os.OpenFile("../zerm.eu"+file, os.O_RDONLY, 0o644)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	return csv.NewReader(f).ReadAll()
 }
 
 func readFile(file string) ([]byte, error) {
@@ -109,18 +130,23 @@ func internalServerError(w http.ResponseWriter, err error) {
 	fmt.Fprintln(w, err)
 }
 
-//TODO: logo exception for Safari because the font is broken
 const logo = "<text class='logo1'>ZERM</text><text class='logo2'>ONLINE</text>"
 
 func main() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if lastArticleUpdate.Add(1000_000000).Before(time.Now()) {
+		log.Printf("Got an %s request from %s (%s): %s (%s)",
+			r.Proto, r.RemoteAddr, r.UserAgent(), r.URL.Path, r.Host)
+		if lastUpdate.Add(1000_000000).Before(time.Now()) {
 			articles, err := parseArticles()
 			if err == nil {
-				lastArticleUpdate = time.Now()
 				allArticles = articles
+				lut, err := parseShortLut()
+				if err == nil {
+					shortLut = lut
+					lastUpdate = time.Now()
+				}
 			}
-			if allArticles == nil {
+			if allArticles == nil || shortLut == nil {
 				internalServerError(w, err)
 				return
 			}
@@ -128,6 +154,16 @@ func main() {
 		if r.Method != "GET" {
 			w.WriteHeader(http.StatusBadRequest)
 			fmt.Fprintln(w, "WTF are you tryin to achieve?! This is GET only.")
+		} else if strings.Contains(r.Host, "zerm.link") {
+			url, ok := shortLut[r.URL.Path]
+			if !ok {
+				log.Printf("%s not found.", r.URL.Path)
+				w.WriteHeader(404)
+				fmt.Fprintf(w, "Couldn't find what you were looking for.")
+				return
+			}
+			log.Printf("Redirecting: %s", url)
+			http.Redirect(w, r, url, 307)
 		} else if r.RequestURI == "/" || strings.HasPrefix(r.RequestURI, "/index") {
 			fmt.Fprint(w, "<html><head>")
 			fmt.Fprint(w, "<title>ZERM Online</title>")
@@ -274,7 +310,6 @@ func main() {
 				fmt.Fprint(w, "<a href='zerm/", article.ID, ".html'>standalone</a>]")
 				fmt.Fprint(w, "</small><br/>")
 
-				//TODO: check why the speeches break
 				html, err := getHTMLArticle("/zerm/" + article.ID)
 				if err != nil {
 					fmt.Fprintln(w, err)
