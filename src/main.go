@@ -61,6 +61,24 @@ func parseShortLut() (map[string]string, error) {
 	return lut, nil
 }
 
+func update() error {
+	articles, err := parseArticles()
+	if err != nil {
+		return err
+	}
+
+	allArticles = articles
+
+	lut, err := parseShortLut()
+	if err != nil {
+		return err
+	}
+
+	shortLut = lut
+	lastUpdate = time.Now()
+	return nil
+}
+
 func quotePreprocess(raw []byte) []byte {
 	cum := regexp.MustCompile("\\\\{").ReplaceAll(raw, []byte("[\\ob\\ich\\lost\\bin]("))
 	return regexp.MustCompile("\\\\}").ReplaceAll(cum, []byte(")"))
@@ -90,9 +108,7 @@ func readFile(file string) ([]byte, error) {
 		return nil, errors.New("File path contains \"..\"")
 	}
 
-	path := "../zerm.eu" + file
-
-	f, err := os.OpenFile(path, os.O_RDONLY, 0o644)
+	f, err := os.OpenFile("../zerm.eu"+file, os.O_RDONLY, 0o644)
 	if err != nil {
 		return nil, err
 	}
@@ -133,23 +149,15 @@ func internalServerError(w http.ResponseWriter, err error) {
 const logo = "<text class='logo1'>ZERM</text><text class='logo2'>ONLINE</text>"
 
 func main() {
+	err := update()
+	if err != nil {
+		log.Fatalln(err)
+	}
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Got an %s request from %s (%s): %s (%s)",
 			r.Proto, r.RemoteAddr, r.UserAgent(), r.URL.Path, r.Host)
 		if lastUpdate.Add(1000_000000).Before(time.Now()) {
-			articles, err := parseArticles()
-			if err == nil {
-				allArticles = articles
-				lut, err := parseShortLut()
-				if err == nil {
-					shortLut = lut
-					lastUpdate = time.Now()
-				}
-			}
-			if allArticles == nil || shortLut == nil {
-				internalServerError(w, err)
-				return
-			}
+			update()
 		}
 		if r.Method != "GET" {
 			w.WriteHeader(http.StatusBadRequest)
