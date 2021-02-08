@@ -102,7 +102,7 @@ func openFile(file string) (*os.File, error) {
 		return nil, errors.New("File path contains \"..\"")
 	}
 
-	return os.OpenFile("../zerm.eu"+file, os.O_RDONLY, 0o644)
+	return os.OpenFile("/var/www/zerm.eu"+file, os.O_RDONLY, 0o644)
 }
 
 func readCsv(file string) ([][]string, error) {
