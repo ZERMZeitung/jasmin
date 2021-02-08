@@ -170,12 +170,11 @@ func main() {
 		if r.Method != "GET" {
 			w.WriteHeader(http.StatusBadRequest)
 			fmt.Fprintln(w, "WTF are you tryin to achieve?! This is GET only.")
-		} else if strings.Contains(r.Host, "zerm.link") {
-			url, ok := shortLut[r.URL.Path]
+		} else if strings.Contains(r.Host, "link") || strings.HasPrefix(r.RequestURI, "/apache_slaughters_kittens") {
+			url, ok := shortLut[strings.TrimPrefix(r.RequestURI, "/apache_slaughters_kittens")]
 			if !ok {
-				log.Printf("%s not found.", r.URL.Path)
-				w.WriteHeader(404)
-				fmt.Fprintf(w, "Couldn't find what you were looking for.")
+				log.Printf("%s not found.", r.RequestURI)
+				http.NotFound(w, r)
 				return
 			}
 			log.Printf("Redirecting: %s", url)
