@@ -15,10 +15,10 @@ import (
 	"github.com/gomarkdown/markdown"
 )
 
-//TODO: integrate zerm.link
-//TODO: logging
-//TODO: logo exception for Safari because the font is broken
-//TODO: cache md or maybe even html articles
+//TODO:
+// - logging
+// - logo exception for Safari because the font is broken
+// - cache md or maybe even html articles
 
 type article struct {
 	Author    string

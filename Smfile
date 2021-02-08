@@ -6,3 +6,15 @@ all {
 run {
     !go run src/main.go
 }
+
+arm {
+    !GOOS=linux GOARCH=arm go build -o jasmin-arm -v -a
+}
+
+x86 {
+    !GOOS=linux GOARCH=amd64 go build -o jasmin-x86 -v -a
+}
+
+clean {
+    !rm -f jasmin-*
+}
