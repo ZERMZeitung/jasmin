@@ -18,11 +18,13 @@ import (
 //TODO: integrate zerm.link
 //TODO: logging
 //TODO: logo exception for Safari because the font is broken
+//TODO: cache md or maybe even html articles
 
 type article struct {
 	Author    string
-	ID        string
+	URL       string
 	Title     string
+	ID        string
 	Published time.Time
 }
 
@@ -42,40 +44,42 @@ func parseArticles() ([]article, error) {
 		if err != nil {
 			return nil, err
 		}
-		articles[i] = article{Author: line[3], ID: line[1], Title: line[2], Published: pub}
+		articles[i] = article{Author: line[3], URL: line[1], ID: line[4], Title: line[2], Published: pub}
 	}
 
 	return articles, nil
 }
 
-func parseShortLut() (map[string]string, error) {
-	//TODO: move to the top
-	lines, err := readCsv("/zm/short.csv")
-	if err != nil {
-		return nil, err
-	}
-	lut := make(map[string]string, len(lines))
-	for _, line := range lines {
-		lut["/"+line[0]] = line[1]
+func genShortLut() (map[string]string, error) {
+	articles := allArticles
+	lut := make(map[string]string, len(articles)+2)
+	lut["/"] = "https://zerm.eu/"
+	lut["/index"] = "https://zerm.eu/index.html"
+	for _, article := range articles {
+		lut["/"+article.ID] = "https://zerm.eu/zerm/" + article.URL
 	}
 	return lut, nil
 }
 
 func update() error {
+	log.Println("[update()] updating...")
 	articles, err := parseArticles()
 	if err != nil {
+		log.Println("[update()] articles: ", err)
 		return err
 	}
 
 	allArticles = articles
 
-	lut, err := parseShortLut()
+	lut, err := genShortLut()
 	if err != nil {
+		log.Println("[update()] short lut: ", err)
 		return err
 	}
 
 	shortLut = lut
 	lastUpdate = time.Now()
+	log.Println("[update()] done.")
 	return nil
 }
 
@@ -92,8 +96,17 @@ func quotePostprocess(raw []byte) []byte {
 	})
 }
 
+func openFile(file string) (*os.File, error) {
+	//prevents attacks like GET /../../../etc/passwd
+	if strings.Contains(file, "..") {
+		return nil, errors.New("File path contains \"..\"")
+	}
+
+	return os.OpenFile("../zerm.eu"+file, os.O_RDONLY, 0o644)
+}
+
 func readCsv(file string) ([][]string, error) {
-	f, err := os.OpenFile("../zerm.eu"+file, os.O_RDONLY, 0o644)
+	f, err := openFile(file)
 	if err != nil {
 		return nil, err
 	}
@@ -103,12 +116,7 @@ func readCsv(file string) ([][]string, error) {
 }
 
 func readFile(file string) ([]byte, error) {
-	//prevents attacks like GET /../../../etc/passwd
-	if strings.Contains(file, "..") {
-		return nil, errors.New("File path contains \"..\"")
-	}
-
-	f, err := os.OpenFile("../zerm.eu"+file, os.O_RDONLY, 0o644)
+	f, err := openFile(file)
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +199,7 @@ func main() {
 				fmt.Fprint(w, "<li>")
 				fmt.Fprint(w, article.Published.Format("02.01.2006"))
 				fmt.Fprint(w, " &ndash; <a href='zerm/")
-				fmt.Fprint(w, article.ID)
+				fmt.Fprint(w, article.URL)
 				fmt.Fprint(w, "'>")
 				fmt.Fprint(w, article.Title)
 				fmt.Fprint(w, "</a></li>")
@@ -209,7 +217,7 @@ func main() {
 			}
 
 			for _, article := range allArticles {
-				fmt.Fprintf(w, "<url><loc>https://zerm.eu/zerm/%s.html</loc><changefreq>monthly</changefreq></url>\n", article.ID)
+				fmt.Fprintf(w, "<url><loc>https://zerm.eu/zerm/%s.html</loc><changefreq>monthly</changefreq></url>\n", article.URL)
 			}
 
 			fmt.Fprintln(w, "</urlset>")
@@ -227,11 +235,11 @@ func main() {
 			for _, article := range allArticles {
 				fmt.Fprintln(w, "<item>")
 				fmt.Fprintf(w, "<title>%s</title>\n", article.Title)
-				fmt.Fprintf(w, "<guid>https://zerm.eu/%d.html#%s</guid>\n", article.Published.Year(), article.ID)
+				fmt.Fprintf(w, "<guid>https://zerm.eu/%d.html#%s</guid>\n", article.Published.Year(), article.URL)
 				fmt.Fprintf(w, "<pubDate>%s</pubDate>\n", article.Published.Format("Mon, 2 Jan 2006 15:04:05 -0700"))
 				fmt.Fprintln(w, "<description><![CDATA[")
 
-				html, err := getHTMLArticle("/zerm/" + article.ID)
+				html, err := getHTMLArticle("/zerm/" + article.URL)
 				if err != nil {
 					fmt.Fprintln(w, err)
 				} else {
@@ -246,7 +254,7 @@ func main() {
 			found := false
 
 			for _, a := range allArticles {
-				if "/zerm/"+a.ID == r.RequestURI {
+				if "/zerm/"+a.URL == r.RequestURI {
 					article = a
 					found = true
 					break
@@ -313,12 +321,12 @@ func main() {
 					continue
 				}
 				fmt.Fprint(w, "<div class='entry'>")
-				fmt.Fprint(w, "<h2 id='", article.ID, "'>", article.Title, "</h2>")
-				fmt.Fprint(w, "<small>[<a href='#", article.ID, "'>link</a>&mdash;")
-				fmt.Fprint(w, "<a href='zerm/", article.ID, ".html'>standalone</a>]")
+				fmt.Fprint(w, "<h2 id='", article.URL, "'>", article.Title, "</h2>")
+				fmt.Fprint(w, "<small>[<a href='#", article.URL, "'>link</a>&mdash;")
+				fmt.Fprint(w, "<a href='zerm/", article.URL, ".html'>standalone</a>]")
 				fmt.Fprint(w, "</small><br/>")
 
-				html, err := getHTMLArticle("/zerm/" + article.ID)
+				html, err := getHTMLArticle("/zerm/" + article.URL)
 				if err != nil {
 					fmt.Fprintln(w, err)
 				} else {
