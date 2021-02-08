@@ -249,12 +249,14 @@ func main() {
 
 				fmt.Fprintln(w, "]]></description>")
 			}
-		} else if strings.HasPrefix(r.RequestURI, "/zerm") {
+		} else if strings.HasPrefix(r.RequestURI, "/zerm/") {
+			reqURI := strings.TrimSuffix(r.RequestURI, ".html")
+			reqURI = strings.TrimSuffix(r.RequestURI, ".md")
 			var article article
 			found := false
 
 			for _, a := range allArticles {
-				if "/zerm/"+a.URL == r.RequestURI {
+				if "/zerm/"+a.URL == reqURI {
 					article = a
 					found = true
 					break
@@ -266,7 +268,7 @@ func main() {
 				return
 			}
 
-			html, err := getHTMLArticle(r.RequestURI)
+			html, err := getHTMLArticle(reqURI)
 			if err != nil {
 				internalServerError(w, err)
 				return
@@ -289,8 +291,9 @@ func main() {
 			fmt.Fprint(w, "<br/><footer>von <strong>")
 			w.Write(author)
 			fmt.Fprint(w, "</strong></footer></body></html>")
-		} else if regexp.MustCompile("^/20[0-9]{2}$").MatchString(r.RequestURI) {
-			year, err := strconv.ParseUint(strings.TrimPrefix(r.RequestURI, "/"), 10, 23)
+		} else if regexp.MustCompile("^/20[0-9]{2}(.html)?$").MatchString(r.RequestURI) {
+			s := strings.TrimSuffix(strings.TrimPrefix(r.RequestURI, "/"), ".html")
+			year, err := strconv.ParseUint(s, 10, 32)
 			if err != nil {
 				internalServerError(w, err)
 				return
