@@ -154,7 +154,7 @@ func internalServerError(w http.ResponseWriter, err error) {
 	fmt.Fprintln(w, err)
 }
 
-const logo = "<text class='logo1'>ZERM</text><text class='logo2'>ONLINE</text>"
+const logo = "<text class='logo1'>ZERM</text> <text class='logo2'>ONLINE</text>"
 
 func main() {
 	err := update()
@@ -302,10 +302,10 @@ func main() {
 			fmt.Fprint(w, "</title><meta charset='utf-8'/>")
 			fmt.Fprint(w, "<link rel='stylesheet' type='text/css' href='style.css'>")
 			fmt.Fprint(w, "</head><body>")
-			fmt.Fprint(w, "<text class='logo1'>ZERM</text>")
-			fmt.Fprint(w, "<text class='logo2'>ONLINE</text>")
+			fmt.Fprint(w, "<text class='logo1'>ZERM</text> ")
+			fmt.Fprint(w, "<text class='logo2'>ONLINE</text> ")
 			fmt.Fprint(w, "<text class='logo1'>G</text>")
-			fmt.Fprint(w, "<text class='logo2'>esamt</text>")
+			fmt.Fprint(w, "<text class='logo2'>esamt</text> ")
 			fmt.Fprint(w, "<text class='logo1'>A</text>")
 			fmt.Fprint(w, "<text class='logo2'>usgabe</text>")
 			fmt.Fprint(w, "<text class='logo1'>", year, "</text>")
