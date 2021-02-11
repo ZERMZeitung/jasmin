@@ -19,7 +19,6 @@ import (
 // - logging
 // - logo exception for Safari because the font is broken
 // - sort articles by datetime
-// - make root dir configurable
 
 type article struct {
 	Author    string
@@ -33,6 +32,7 @@ var allArticles []article
 var shortLut map[string]string
 var htmlCache map[string][]byte
 var lastUpdate = time.Unix(0, 0)
+var rootDir = "/var/www/zerm.eu"
 
 func parseArticles() ([]article, error) {
 	lines, err := readCsv("/articles.csv")
@@ -103,7 +103,7 @@ func openFile(file string) (*os.File, error) {
 		return nil, errors.New("File path contains \"..\"")
 	}
 
-	return os.OpenFile("/var/www/zerm.eu"+file, os.O_RDONLY, 0o644)
+	return os.OpenFile(rootDir+file, os.O_RDONLY, 0o644)
 }
 
 func readCsv(file string) ([][]string, error) {
@@ -170,10 +170,15 @@ func internalServerError(w http.ResponseWriter, err error) {
 const logo = "<text class='logo1'>ZERM</text> <text class='logo2'>ONLINE</text>"
 
 func main() {
+	if len(os.Args) > 1 {
+		rootDir = os.Args[1]
+	}
+
 	err := update()
 	if err != nil {
 		log.Fatalln(err)
 	}
+
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Got an %s request from %s (%s): %s (%s)",
 			r.Proto, r.RemoteAddr, r.UserAgent(), r.URL.Path, r.Host)
