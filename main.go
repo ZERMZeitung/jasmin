@@ -18,8 +18,8 @@ import (
 //TODO:
 // - logging
 // - logo exception for Safari because the font is broken
-// - cache md or maybe even html articles
 // - sort articles by datetime
+// - make root dir configurable
 
 type article struct {
 	Author    string
@@ -31,6 +31,7 @@ type article struct {
 
 var allArticles []article
 var shortLut map[string]string
+var htmlCache map[string][]byte
 var lastUpdate = time.Unix(0, 0)
 
 func parseArticles() ([]article, error) {
@@ -141,12 +142,24 @@ func readFile(file string) ([]byte, error) {
 }
 
 func getHTMLArticle(reqURI string) ([]byte, error) {
-	md, err := readFile(reqURI + ".md")
+	reqURI = strings.TrimSuffix(reqURI, ".html")
+	if !strings.HasSuffix(reqURI, ".md") {
+		reqURI += ".md"
+	}
+
+	html, ok := htmlCache[reqURI]
+	if ok {
+		return html, nil
+	}
+
+	md, err := readFile(reqURI)
 	if err != nil {
 		return nil, err
 	}
 
-	return quotePostprocess(markdown.ToHTML(quotePreprocess(md), nil, nil)), nil
+	html = quotePostprocess(markdown.ToHTML(quotePreprocess(md), nil, nil))
+	htmlCache[reqURI] = html
+	return html, nil
 }
 
 func internalServerError(w http.ResponseWriter, err error) {
@@ -249,13 +262,11 @@ func main() {
 				fmt.Fprintln(w, "]]></description>")
 			}
 		} else if strings.HasPrefix(r.RequestURI, "/zerm/") {
-			reqURI := strings.TrimSuffix(r.RequestURI, ".html")
-			reqURI = strings.TrimSuffix(r.RequestURI, ".md")
 			var article article
 			found := false
 
 			for _, a := range allArticles {
-				if "/zerm/"+a.URL == reqURI {
+				if "/zerm/"+a.URL == r.RequestURI {
 					article = a
 					found = true
 					break
@@ -267,7 +278,7 @@ func main() {
 				return
 			}
 
-			html, err := getHTMLArticle(reqURI)
+			html, err := getHTMLArticle(r.RequestURI)
 			if err != nil {
 				internalServerError(w, err)
 				return
