@@ -35,7 +35,13 @@ var lastUpdate = time.Unix(0, 0)
 var rootDir = "/var/www/zerm.eu"
 
 func parseArticles() ([]article, error) {
-	lines, err := readCsv("/articles.csv")
+	f, err := os.OpenFile(rootDir+"/articles.csv", os.O_RDONLY, 0o644)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	lines, err := csv.NewReader(f).ReadAll()
 	if err != nil {
 		return nil, err
 	}
@@ -66,21 +72,22 @@ func genShortLut() (map[string]string, error) {
 func update() error {
 	articles, err := parseArticles()
 	if err != nil {
-		log.Println("[update()] articles: ", err)
+		log.Println("update: articles: ", err)
 		return err
 	}
-
 	allArticles = articles
 
 	lut, err := genShortLut()
 	if err != nil {
-		log.Println("[update()] short lut: ", err)
+		log.Println("update: short lut: ", err)
 		return err
 	}
-
 	shortLut = lut
+
+	htmlCache = make(map[string][]byte)
+
 	lastUpdate = time.Now()
-	log.Println("[update()] done.")
+	log.Println("Flushed the cache.")
 	return nil
 }
 
@@ -97,27 +104,13 @@ func quotePostprocess(raw []byte) []byte {
 	})
 }
 
-func openFile(file string) (*os.File, error) {
+func readFile(file string) ([]byte, error) {
 	//prevents attacks like GET /../../../etc/passwd
 	if strings.Contains(file, "..") {
 		return nil, errors.New("File path contains \"..\"")
 	}
 
-	return os.OpenFile(rootDir+file, os.O_RDONLY, 0o644)
-}
-
-func readCsv(file string) ([][]string, error) {
-	f, err := openFile(file)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	return csv.NewReader(f).ReadAll()
-}
-
-func readFile(file string) ([]byte, error) {
-	f, err := openFile(file)
+	f, err := os.OpenFile(rootDir+file, os.O_RDONLY, 0o644)
 	if err != nil {
 		return nil, err
 	}
@@ -149,6 +142,7 @@ func getHTMLArticle(reqURI string) ([]byte, error) {
 
 	html, ok := htmlCache[reqURI]
 	if ok {
+		log.Println("The HTML cache actually helped!")
 		return html, nil
 	}
 
@@ -354,7 +348,7 @@ func main() {
 
 				author, err := readFile("/authors/" + article.Author + ".html")
 				if err != nil {
-					internalServerError(w, err)
+					fmt.Fprint(w, err)
 				} else {
 					fmt.Fprint(w, "<small>von <strong>")
 					w.Write(author)
