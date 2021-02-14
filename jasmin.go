@@ -1,4 +1,4 @@
-package main
+package jasmin
 
 import (
 	"encoding/csv"
@@ -16,9 +16,25 @@ import (
 )
 
 //TODO:
-// - logging
+// - more logging
 // - logo exception for Safari because the font is broken
 // - sort articles by datetime
+
+func Fatal(v ...interface{}) {
+	log.Fatalln("[Fatal] ", v)
+}
+
+func Err(v ...interface{}) {
+	log.Println("[Err] ", v)
+}
+
+func Warn(v ...interface{}) {
+	log.Println("[Warn] ", v)
+}
+
+func Info(v ...interface{}) {
+	log.Println("[Info] ", v)
+}
 
 type article struct {
 	Author    string
@@ -72,14 +88,14 @@ func genShortLut() (map[string]string, error) {
 func update() error {
 	articles, err := parseArticles()
 	if err != nil {
-		log.Println("update: articles: ", err)
+		Err("update: articles: ", err)
 		return err
 	}
 	allArticles = articles
 
 	lut, err := genShortLut()
 	if err != nil {
-		log.Println("update: short lut: ", err)
+		Err("update: short lut: ", err)
 		return err
 	}
 	shortLut = lut
@@ -87,7 +103,7 @@ func update() error {
 	htmlCache = make(map[string][]byte)
 
 	lastUpdate = time.Now()
-	log.Println("Flushed the cache.")
+	Info("Flushed the cache.")
 	return nil
 }
 
@@ -118,6 +134,7 @@ func readFile(file string) ([]byte, error) {
 
 	stat, err := f.Stat()
 	if err != nil {
+		Err("Stat failed for \"", file, "\": ", err)
 		return nil, err
 	}
 	size := stat.Size()
@@ -125,9 +142,11 @@ func readFile(file string) ([]byte, error) {
 	b := make([]byte, size)
 	n, err := f.Read(b)
 	if err != nil {
+		Err("Can't read the file \"", file, "\"")
 		return nil, err
 	}
 	if int64(n) < size {
+		Err("Can't read the file \"", file, "\" fully, wtf?")
 		return nil, errors.New("Can't read the full file apparently")
 	}
 
@@ -142,7 +161,7 @@ func getHTMLArticle(reqURI string) ([]byte, error) {
 
 	html, ok := htmlCache[reqURI]
 	if ok {
-		log.Println("The HTML cache actually helped!")
+		Info("The HTML cache actually helped!")
 		return html, nil
 	}
 
@@ -170,11 +189,11 @@ func main() {
 
 	err := update()
 	if err != nil {
-		log.Fatalln(err)
+		Fatal(err)
 	}
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("Got an %s request from %s (%s): %s (%s)",
+		Info("Got an %s request from %s (%s): %s (%s)",
 			r.Proto, r.RemoteAddr, r.UserAgent(), r.URL.Path, r.Host)
 		if lastUpdate.Add(60_000000000).Before(time.Now()) {
 			update()
@@ -185,11 +204,11 @@ func main() {
 		} else if strings.Contains(r.Host, "link") || strings.HasPrefix(r.RequestURI, "/apache_slaughters_kittens") {
 			url, ok := shortLut[strings.TrimPrefix(r.RequestURI, "/apache_slaughters_kittens")]
 			if !ok {
-				log.Printf("%s not found.", r.RequestURI)
+				Warn("%s not found.", r.RequestURI)
 				http.NotFound(w, r)
 				return
 			}
-			log.Printf("Redirecting: %s", url)
+			Info("Redirecting: %s", url)
 			http.Redirect(w, r, url, 307)
 		} else if r.RequestURI == "/" || strings.HasPrefix(r.RequestURI, "/index") {
 			fmt.Fprint(w, "<html><head>")

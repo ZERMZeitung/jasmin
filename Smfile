@@ -1,10 +1,10 @@
 all {
     !go get github.com/gomarkdown/markdown
-    !go build main.go
+    !go build jasmin.go
 }
 
 test {
-    !go run main.go ../zerm.eu
+    !go run jasmin.go ../zerm.eu
 }
 
 arm {
