@@ -225,7 +225,9 @@ func main() {
 			fmt.Fprint(w, "<a href='rss.xml'>RSS Feed</a>")
 			fmt.Fprint(w, "<ul>")
 
-			for _, article := range allArticles {
+			articles := allArticles
+
+			for _, article := range articles {
 				fmt.Fprint(w, "<li>")
 				fmt.Fprint(w, article.Published.Format("02.01.2006"))
 				fmt.Fprint(w, " &ndash; <a href='zerm/")
@@ -246,7 +248,9 @@ func main() {
 				fmt.Fprintf(w, "<url><loc>https://zerm.eu/%d.html</loc><changefreq>monthly</changefreq></url>\n", y)
 			}
 
-			for _, article := range allArticles {
+			articles := allArticles
+
+			for _, article := range articles {
 				fmt.Fprintf(w, "<url><loc>https://zerm.eu/zerm/%s.html</loc><changefreq>monthly</changefreq></url>\n", article.URL)
 			}
 
@@ -262,7 +266,9 @@ func main() {
 			fmt.Fprintln(w, "<link>https://zerm.eu/rss.xml</link>")
 			fmt.Fprintln(w, "<atom:link href=\"https://zerm.eu/rss.xml\" rel=\"self\" type=\"application/rss+xml\" />")
 
-			for _, article := range allArticles {
+			articles := allArticles
+
+			for _, article := range articles {
 				fmt.Fprintln(w, "<item>")
 				fmt.Fprintf(w, "<title>%s</title>\n", article.Title)
 				fmt.Fprintf(w, "<guid>https://zerm.eu/%d.html#%s</guid>\n", article.Published.Year(), article.URL)
@@ -283,7 +289,9 @@ func main() {
 			var article article
 			found := false
 
-			for _, a := range allArticles {
+			articles := allArticles
+
+			for _, a := range articles {
 				if "/zerm/"+a.URL == r.RequestURI {
 					article = a
 					found = true
@@ -347,7 +355,9 @@ func main() {
 				fmt.Fprint(w, ".svg'>separaten Vorderseite</a>.</i></p>")
 			}
 
-			for _, article := range allArticles {
+			articles := allArticles
+
+			for _, article := range articles {
 				if article.Published.Year() != int(year) {
 					continue
 				}
