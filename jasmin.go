@@ -53,12 +53,14 @@ var rootDir = "/var/www/zerm.eu"
 func parseArticles() ([]article, error) {
 	f, err := os.OpenFile(rootDir+"/articles.csv", os.O_RDONLY, 0o644)
 	if err != nil {
+		Err("Can't read article file: ", err)
 		return nil, err
 	}
 	defer f.Close()
 
 	lines, err := csv.NewReader(f).ReadAll()
 	if err != nil {
+		Err("Can't read article csv: ", err)
 		return nil, err
 	}
 
@@ -66,6 +68,7 @@ func parseArticles() ([]article, error) {
 	for i, line := range lines {
 		pub, err := time.Parse("02.01.2006 15:04:05 MST", line[0])
 		if err != nil {
+			Err("Can't parse time ", line[0], "of article ", line[1])
 			return nil, err
 		}
 		articles[i] = article{Author: line[3], URL: line[1], ID: line[4], Title: line[2], Published: pub}
@@ -74,7 +77,7 @@ func parseArticles() ([]article, error) {
 	return articles, nil
 }
 
-func genShortLut() (map[string]string, error) {
+func genShortLut() map[string]string {
 	articles := allArticles
 	lut := make(map[string]string, len(articles)+2)
 	lut["/"] = "https://zerm.eu/"
@@ -82,23 +85,18 @@ func genShortLut() (map[string]string, error) {
 	for _, article := range articles {
 		lut["/"+article.ID] = "https://zerm.eu/zerm/" + article.URL
 	}
-	return lut, nil
+	return lut
 }
 
 func update() error {
 	articles, err := parseArticles()
 	if err != nil {
-		Err("update: articles: ", err)
+		Err("Can't update articles: ", err)
 		return err
 	}
 	allArticles = articles
 
-	lut, err := genShortLut()
-	if err != nil {
-		Err("update: short lut: ", err)
-		return err
-	}
-	shortLut = lut
+	shortLut = genShortLut()
 
 	htmlCache = make(map[string][]byte)
 
@@ -123,11 +121,13 @@ func quotePostprocess(raw []byte) []byte {
 func readFile(file string) ([]byte, error) {
 	//prevents attacks like GET /../../../etc/passwd
 	if strings.Contains(file, "..") {
+		Warn("Refusing to read file containing ..: ", file)
 		return nil, errors.New("File path contains \"..\"")
 	}
 
 	f, err := os.OpenFile(rootDir+file, os.O_RDONLY, 0o644)
 	if err != nil {
+		Warn("Can't open file ", file)
 		return nil, err
 	}
 	defer f.Close()
@@ -167,6 +167,7 @@ func getHTMLArticle(reqURI string) ([]byte, error) {
 
 	md, err := readFile(reqURI)
 	if err != nil {
+		Warn("Can't read HTML article ", reqURI, ": ", err)
 		return nil, err
 	}
 
