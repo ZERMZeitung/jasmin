@@ -1,4 +1,4 @@
-package jasmin
+package main
 
 import (
 	"encoding/csv"
@@ -21,19 +21,35 @@ import (
 // - sort articles by datetime
 
 func Fatal(v ...interface{}) {
-	log.Fatalln("[Fatal] ", v)
+	msg := "[Fatal]"
+	for _, s := range v {
+		msg += " " + fmt.Sprint(s)
+	}
+	log.Fatalln(msg)
 }
 
 func Err(v ...interface{}) {
-	log.Println("[Err] ", v)
+	msg := "[Err]"
+	for _, s := range v {
+		msg += " " + fmt.Sprint(s)
+	}
+	log.Println(msg)
 }
 
 func Warn(v ...interface{}) {
-	log.Println("[Warn] ", v)
+	msg := "[Warn]"
+	for _, s := range v {
+		msg += " " + fmt.Sprint(s)
+	}
+	log.Println(msg)
 }
 
 func Info(v ...interface{}) {
-	log.Println("[Info] ", v)
+	msg := "[Info]"
+	for _, s := range v {
+		msg += " " + fmt.Sprint(s)
+	}
+	log.Println(msg)
 }
 
 type article struct {
@@ -121,13 +137,13 @@ func quotePostprocess(raw []byte) []byte {
 func readFile(file string) ([]byte, error) {
 	//prevents attacks like GET /../../../etc/passwd
 	if strings.Contains(file, "..") {
-		Warn("Refusing to read file containing ..: ", file)
+		Warn("Refusing to read file containing \"..\":", file)
 		return nil, errors.New("File path contains \"..\"")
 	}
 
 	f, err := os.OpenFile(rootDir+file, os.O_RDONLY, 0o644)
 	if err != nil {
-		Warn("Can't open file ", file)
+		Warn("Can't open file", file)
 		return nil, err
 	}
 	defer f.Close()
@@ -194,8 +210,8 @@ func main() {
 	}
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		Info("Got an %s request from %s (%s): %s (%s)",
-			r.Proto, r.RemoteAddr, r.UserAgent(), r.URL.Path, r.Host)
+		Info(fmt.Sprintf("Got an %s request from %s (%s): %s (%s)",
+			r.Proto, r.RemoteAddr, r.UserAgent(), r.URL.Path, r.Host))
 		if lastUpdate.Add(60_000000000).Before(time.Now()) {
 			update()
 		}
@@ -205,11 +221,11 @@ func main() {
 		} else if strings.Contains(r.Host, "link") || strings.HasPrefix(r.RequestURI, "/apache_slaughters_kittens") {
 			url, ok := shortLut[strings.TrimPrefix(r.RequestURI, "/apache_slaughters_kittens")]
 			if !ok {
-				Warn("%s not found.", r.RequestURI)
+				Warn(r.RequestURI, "not found.")
 				http.NotFound(w, r)
 				return
 			}
-			Info("Redirecting: %s", url)
+			Info("Redirecting:", url)
 			http.Redirect(w, r, url, 307)
 		} else if r.RequestURI == "/" || strings.HasPrefix(r.RequestURI, "/index") {
 			fmt.Fprint(w, "<html><head>")
