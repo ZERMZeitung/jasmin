@@ -401,7 +401,7 @@ func main() {
 					fmt.Fprint(w, "</strong></small><br/>")
 				}
 
-				fmt.Fprint(w, "<small>", article.Published.Format("02.01.2006 15:04:05 MST"), "</small></div>")
+				fmt.Fprint(w, "<small>", article.Published.Format("02.01.2006 15:04 MST"), "</small></div>")
 			}
 
 			fmt.Fprint(w, "</body></html>")
