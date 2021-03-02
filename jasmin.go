@@ -1,10 +1,8 @@
 package main
 
 import (
-	"encoding/csv"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"regexp"
@@ -16,41 +14,8 @@ import (
 )
 
 //TODO:
-// - more logging
-// - logo exception for Safari because the font is broken
 // - sort articles by datetime
-
-func Fatal(v ...interface{}) {
-	msg := "[Fatal]"
-	for _, s := range v {
-		msg += " " + fmt.Sprint(s)
-	}
-	log.Fatalln(msg)
-}
-
-func Err(v ...interface{}) {
-	msg := "[Err]"
-	for _, s := range v {
-		msg += " " + fmt.Sprint(s)
-	}
-	log.Println(msg)
-}
-
-func Warn(v ...interface{}) {
-	msg := "[Warn]"
-	for _, s := range v {
-		msg += " " + fmt.Sprint(s)
-	}
-	log.Println(msg)
-}
-
-func Info(v ...interface{}) {
-	msg := "[Info]"
-	for _, s := range v {
-		msg += " " + fmt.Sprint(s)
-	}
-	log.Println(msg)
-}
+// - logo exception for Safari because the font is broken
 
 type article struct {
 	Author    string
@@ -66,54 +31,15 @@ var htmlCache map[string][]byte
 var lastUpdate = time.Unix(0, 0)
 var rootDir = "/var/www/zerm.eu"
 
-func parseArticles() ([]article, error) {
-	f, err := os.OpenFile(rootDir+"/articles.csv", os.O_RDONLY, 0o644)
-	if err != nil {
-		Err("Can't read article file: ", err)
-		return nil, err
-	}
-	defer f.Close()
-
-	lines, err := csv.NewReader(f).ReadAll()
-	if err != nil {
-		Err("Can't read article csv: ", err)
-		return nil, err
-	}
-
-	articles := make([]article, len(lines))
-	for i, line := range lines {
-		pub, err := time.Parse("02.01.2006 15:04:05 MST", line[0])
-		if err != nil {
-			Err("Can't parse time ", line[0], "of article ", line[1])
-			return nil, err
-		}
-		articles[i] = article{Author: line[3], URL: line[1], ID: line[4], Title: line[2], Published: pub}
-	}
-
-	return articles, nil
-}
-
-func genShortLut() map[string]string {
-	articles := allArticles
-	lut := make(map[string]string, len(articles)+2)
-	lut["/"] = "https://zerm.eu/"
-	lut["/index"] = "https://zerm.eu/index.html"
-	for _, article := range articles {
-		lut["/"+article.ID] = "https://zerm.eu/zerm/" + article.URL
-	}
-	return lut
-}
-
 func update() error {
-	articles, err := parseArticles()
+	articles, err := parseArticles(rootDir + "/articles.csv")
 	if err != nil {
 		Err("Can't update articles: ", err)
 		return err
 	}
+
+	shortLut = genShortLut(articles)
 	allArticles = articles
-
-	shortLut = genShortLut()
-
 	htmlCache = make(map[string][]byte)
 
 	lastUpdate = time.Now()
