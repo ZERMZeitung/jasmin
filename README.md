@@ -4,9 +4,9 @@ The new ZERM backend. :sparkle:
 ## Installing
 ### ARM
 ```
-install.sh jasmin sha256 b219ae041a34f1e77fa6f69bffed8ede67c91c1112243f25a23bd34a9ce010d7 https://github.com/ZERMZeitung/jasmin/releases/download/5/jasmin-arm
+install.sh jasmin sha256 1fac95a029fcf30a2a4cad91221aa5a0da5d8945017fcd2ec0fac84a54f79a86 https://github.com/ZERMZeitung/jasmin/releases/download/6/jasmin-arm
 ```
 ### x86
 ```
-install.sh jasmin sha256 69c1ae807beb3973aa231a736d1af768fe95b7003cc8d1db189a1cad4cc4bcef https://github.com/ZERMZeitung/jasmin/releases/download/5/jasmin-x86
+install.sh jasmin sha256 22ca27513e3f6cc0284da72a816a01f993b0ba981e01388a95bd23c106649fc5 https://github.com/ZERMZeitung/jasmin/releases/download/6/jasmin-x86
 ```
