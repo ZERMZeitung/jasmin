@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"mime"
 	"net/http"
 	"os"
 	"regexp"
@@ -338,6 +339,8 @@ func main() {
 				http.NotFound(w, r)
 				return
 			}
+
+			w.Header().Add("Content-Type", mime.TypeByExtension(r.RequestURI))
 
 			w.Write(b)
 		}
