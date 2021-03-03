@@ -48,12 +48,14 @@ func update() error {
 	return nil
 }
 
-func quotePreprocess(raw []byte) []byte {
-	cum := regexp.MustCompile("\\\\{").ReplaceAll(raw, []byte("[\\ob\\ich\\lost\\bin]("))
+func articlePreprocess(raw []byte) []byte {
+	cum := regexp.MustCompile("\\\\,").ReplaceAll(raw, []byte("„"))
+	cum = regexp.MustCompile("\\\\'").ReplaceAll(raw, []byte("“"))
+	cum = regexp.MustCompile("\\\\{").ReplaceAll(cum, []byte("[\\ob\\ich\\lost\\bin]("))
 	return regexp.MustCompile("\\\\}").ReplaceAll(cum, []byte(")"))
 }
 
-func quotePostprocess(raw []byte) []byte {
+func articlePostprocess(raw []byte) []byte {
 	i := 0
 	return regexp.MustCompile("\\\\ob\\\\ich\\\\lost\\\\bin").ReplaceAllFunc(raw, func(b []byte) []byte {
 		i++
@@ -114,7 +116,7 @@ func getHTMLArticle(reqURI string) ([]byte, error) {
 		return nil, err
 	}
 
-	html = quotePostprocess(markdown.ToHTML(quotePreprocess(md), nil, nil))
+	html = articlePostprocess(markdown.ToHTML(articlePreprocess(md), nil, nil))
 	htmlCache[reqURI] = html
 	return html, nil
 }
