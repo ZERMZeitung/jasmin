@@ -17,6 +17,7 @@ import (
 //TODO:
 // - sort articles by datetime
 // - logo exception for Safari because the font is broken
+// - put a lot of the static html in separate files
 
 type article struct {
 	Author    string
@@ -122,8 +123,13 @@ func getHTMLArticle(reqURI string) ([]byte, error) {
 }
 
 func internalServerError(w http.ResponseWriter, err error) {
+	contentType(w, "text/plain")
 	w.WriteHeader(http.StatusInternalServerError)
 	fmt.Fprintln(w, err)
+}
+
+func contentType(w http.ResponseWriter, contentType string) {
+	w.Header().Add("Content-Type", contentType+"; charset=utf-8")
 }
 
 const logo = "<text class='logo1'>ZERM</text> <text class='logo2'>ONLINE</text>"
@@ -157,6 +163,8 @@ func main() {
 			Info("Redirecting:", url)
 			http.Redirect(w, r, url, 307)
 		} else if r.RequestURI == "/" || strings.HasPrefix(r.RequestURI, "/index") {
+			contentType(w, "text/html")
+
 			fmt.Fprint(w, "<html><head>")
 			fmt.Fprint(w, "<title>ZERM Online</title>")
 			fmt.Fprint(w, "<meta charset='utf-8'/>")
@@ -185,6 +193,8 @@ func main() {
 
 			fmt.Fprint(w, "</ul></body></html>")
 		} else if r.RequestURI == "/sitemap.xml" {
+			contentType(w, "text/xml")
+
 			fmt.Fprintln(w, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
 			fmt.Fprintln(w, "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">")
 			fmt.Fprintln(w, "<url><loc>https://zerm.eu/</loc><changefreq>daily</changefreq></url>")
@@ -202,6 +212,8 @@ func main() {
 
 			fmt.Fprintln(w, "</urlset>")
 		} else if r.RequestURI == "/rss.xml" {
+			contentType(w, "application/rss+xml")
+
 			fmt.Fprintln(w, "<?xml version=\"1.0\" encoding=\"utf-8\"?>")
 			fmt.Fprintln(w, "<?xml-stylesheet type=\"text/css\" href=\"rss.css\" ?>")
 			fmt.Fprintln(w, "<rss version=\"2.0\" xmlns:atom=\"http://www.w3.org/2005/Atom\">")
@@ -262,6 +274,8 @@ func main() {
 				return
 			}
 
+			contentType(w, "text/html")
+
 			fmt.Fprint(w, "<html><head><title>")
 			fmt.Fprint(w, article.Title)
 			fmt.Fprint(w, "</title>")
@@ -280,6 +294,8 @@ func main() {
 				internalServerError(w, err)
 				return
 			}
+
+			contentType(w, "text/html")
 
 			fmt.Fprint(w, "<html><head><title>ZERM GA ", year)
 			fmt.Fprint(w, "</title><meta charset='utf-8'/>")
@@ -342,8 +358,7 @@ func main() {
 				return
 			}
 
-			w.Header().Add("Content-Type", mime.TypeByExtension(r.RequestURI))
-
+			contentType(w, mime.TypeByExtension(r.RequestURI))
 			w.Write(b)
 		}
 	})
