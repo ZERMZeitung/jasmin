@@ -122,14 +122,21 @@ func getHTMLArticle(reqURI string) ([]byte, error) {
 	return html, nil
 }
 
-func internalServerError(w http.ResponseWriter, err error) {
-	contentType(w, "text/plain")
-	w.WriteHeader(http.StatusInternalServerError)
+func writeHeader(w http.ResponseWriter, r *http.Request, code int, info string, contentType string) {
+	w.WriteHeader(code)
+	w.Header().Add("Content-Type", contentType+"; charset=utf-8")
+	queries.WithLabelValues(fmt.Sprint(code), info, contentType, r.Host, r.Method, r.RequestURI, r.UserAgent()).Inc()
+}
+
+func internalServerError(w http.ResponseWriter, r *http.Request, err error) {
+	writeHeader(w, r, 500, fmt.Sprint(err), "text/plain")
 	fmt.Fprintln(w, err)
 }
 
-func contentType(w http.ResponseWriter, contentType string) {
-	w.Header().Add("Content-Type", contentType+"; charset=utf-8")
+func notFound(w http.ResponseWriter, r *http.Request) {
+	Warn(r.RequestURI, "not found.")
+	http.NotFound(w, r)
+	queries.WithLabelValues("404", r.RequestURI, "", r.Host, r.Method, r.RequestURI, r.UserAgent()).Inc()
 }
 
 const logo = "<text class='logo1'>ZERM</text> <text class='logo2'>ONLINE</text>"
@@ -147,23 +154,23 @@ func main() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		Info(fmt.Sprintf("Got an %s request from %s (%s): %s (%s)",
 			r.Proto, r.RemoteAddr, r.UserAgent(), r.URL.Path, r.Host))
-		if lastUpdate.Add(60_000000000).Before(time.Now()) {
+		if lastUpdate.Add(60 * time.Second).Before(time.Now()) {
 			update()
 		}
 		if r.Method != "GET" {
-			w.WriteHeader(http.StatusBadRequest)
+			writeHeader(w, r, 400, "", "text/plain")
 			fmt.Fprintln(w, "WTF are you tryin to achieve?! This is GET only.")
 		} else if strings.Contains(r.Host, "link") || strings.HasPrefix(r.RequestURI, "/apache_slaughters_kittens") {
 			url, ok := shortLut[strings.TrimPrefix(r.RequestURI, "/apache_slaughters_kittens")]
 			if !ok {
-				Warn(r.RequestURI, "not found.")
-				http.NotFound(w, r)
+				notFound(w, r)
 				return
 			}
 			Info("Redirecting:", url)
 			http.Redirect(w, r, url, 307)
+			queries.WithLabelValues("307", "short found").Inc()
 		} else if r.RequestURI == "/" || strings.HasPrefix(r.RequestURI, "/index") {
-			contentType(w, "text/html")
+			writeHeader(w, r, 200, "", "text/html")
 
 			fmt.Fprint(w, "<html><head>")
 			fmt.Fprint(w, "<title>ZERM Online</title>")
@@ -193,7 +200,7 @@ func main() {
 
 			fmt.Fprint(w, "</ul></body></html>")
 		} else if r.RequestURI == "/sitemap.xml" {
-			contentType(w, "text/xml")
+			writeHeader(w, r, 200, "", "text/xml")
 
 			fmt.Fprintln(w, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
 			fmt.Fprintln(w, "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">")
@@ -212,7 +219,7 @@ func main() {
 
 			fmt.Fprintln(w, "</urlset>")
 		} else if r.RequestURI == "/rss.xml" {
-			contentType(w, "application/rss+xml")
+			writeHeader(w, r, 200, "", "application/rss+xml")
 
 			fmt.Fprintln(w, "<?xml version=\"1.0\" encoding=\"utf-8\"?>")
 			fmt.Fprintln(w, "<?xml-stylesheet type=\"text/css\" href=\"rss.css\" ?>")
@@ -258,23 +265,23 @@ func main() {
 			}
 
 			if !found {
-				http.NotFound(w, r)
+				notFound(w, r)
 				return
 			}
 
 			html, err := getHTMLArticle(r.RequestURI)
 			if err != nil {
-				internalServerError(w, err)
+				internalServerError(w, r, err)
 				return
 			}
 
 			author, err := readFile("/authors/" + article.Author + ".html")
 			if err != nil {
-				internalServerError(w, err)
+				internalServerError(w, r, err)
 				return
 			}
 
-			contentType(w, "text/html")
+			writeHeader(w, r, 200, "", "text/html")
 
 			fmt.Fprint(w, "<html><head><title>")
 			fmt.Fprint(w, article.Title)
@@ -291,11 +298,11 @@ func main() {
 			s := strings.TrimSuffix(strings.TrimPrefix(r.RequestURI, "/"), ".html")
 			year, err := strconv.ParseUint(s, 10, 32)
 			if err != nil {
-				internalServerError(w, err)
+				internalServerError(w, r, err)
 				return
 			}
 
-			contentType(w, "text/html")
+			writeHeader(w, r, 200, "", "text/html")
 
 			fmt.Fprint(w, "<html><head><title>ZERM GA ", year)
 			fmt.Fprint(w, "</title><meta charset='utf-8'/>")
@@ -354,14 +361,14 @@ func main() {
 			b, err := readFile(r.RequestURI)
 
 			if err != nil {
-				http.NotFound(w, r)
+				notFound(w, r)
 				return
 			}
 
-			contentType(w, mime.TypeByExtension(r.RequestURI))
+			writeHeader(w, r, 200, "", mime.TypeByExtension(r.RequestURI))
 			w.Write(b)
 		}
 	})
 
-	http.ListenAndServe(":8099", nil)
+	Fatal(http.ListenAndServe(":8099", nil))
 }

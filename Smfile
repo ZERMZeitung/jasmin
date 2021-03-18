@@ -5,7 +5,7 @@ all {
 
 test {
     !go get github.com/zermzeitung/jasmin
-    !go run jasmin.go ../zerm.eu
+    !go run *.go ../zerm.eu
 }
 
 arm {
@@ -17,6 +17,8 @@ x86 {
     !go get github.com/zermzeitung/jasmin
     !GOOS=linux GOARCH=amd64 go build -o jasmin-x86 -v -a
 }
+
+release (x86 arm) {}
 
 clean {
     !rm -f jasmin-*
