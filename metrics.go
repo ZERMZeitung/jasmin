@@ -7,12 +7,24 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-var queries = prometheus.NewCounterVec(prometheus.CounterOpts{
-	Name: "queries",
-	Help: "Queries",
-}, []string{"code", "info", "content_type", "host", "method", "req_uri", "user_agent"})
+var userAgents = prometheus.NewCounterVec(prometheus.CounterOpts{
+	Name: "user_agents",
+	Help: "User Agents",
+}, []string{"user_agent"})
+
+var requests = prometheus.NewCounterVec(prometheus.CounterOpts{
+	Name: "requests",
+	Help: "Requests",
+}, []string{"method", "req_uri"})
+
+var responses = prometheus.NewCounterVec(prometheus.CounterOpts{
+	Name: "responses",
+	Help: "Responses",
+}, []string{"code", "info", "content_type", "req_uri"})
 
 func init() {
-	prometheus.MustRegister(queries)
+	prometheus.MustRegister(requests)
+	prometheus.MustRegister(responses)
+	prometheus.MustRegister(userAgents)
 	http.Handle("/metrics", promhttp.Handler())
 }

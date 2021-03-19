@@ -68,7 +68,7 @@ func readFile(file string) ([]byte, error) {
 	//prevents attacks like GET /../../../etc/passwd
 	if strings.Contains(file, "..") {
 		Warn("Refusing to read file containing \"..\":", file)
-		return nil, errors.New("File path contains \"..\"")
+		return nil, errors.New("file path contains \"..\"")
 	}
 
 	f, err := os.OpenFile(rootDir+file, os.O_RDONLY, 0o644)
@@ -93,7 +93,7 @@ func readFile(file string) ([]byte, error) {
 	}
 	if int64(n) < size {
 		Err("Can't read the file \"", file, "\" fully, wtf?")
-		return nil, errors.New("Can't read the full file apparently")
+		return nil, errors.New("can't read the full file apparently")
 	}
 
 	return b, nil
@@ -125,7 +125,7 @@ func getHTMLArticle(reqURI string) ([]byte, error) {
 func writeHeader(w http.ResponseWriter, r *http.Request, code int, info string, contentType string) {
 	w.WriteHeader(code)
 	w.Header().Add("Content-Type", contentType+"; charset=utf-8")
-	queries.WithLabelValues(fmt.Sprint(code), info, contentType, r.Host, r.Method, r.RequestURI, r.UserAgent()).Inc()
+	responses.WithLabelValues(fmt.Sprint(code), info, contentType, r.RequestURI).Inc()
 }
 
 func internalServerError(w http.ResponseWriter, r *http.Request, err error) {
@@ -136,7 +136,13 @@ func internalServerError(w http.ResponseWriter, r *http.Request, err error) {
 func notFound(w http.ResponseWriter, r *http.Request) {
 	Warn(r.RequestURI, "not found.")
 	http.NotFound(w, r)
-	queries.WithLabelValues("404", r.RequestURI, "", r.Host, r.Method, r.RequestURI, r.UserAgent()).Inc()
+	responses.WithLabelValues("404", "", "", r.RequestURI).Inc()
+}
+
+func redirect(w http.ResponseWriter, r *http.Request, url string, code int) {
+	Info("Redirecting:", url)
+	http.Redirect(w, r, url, code)
+	responses.WithLabelValues(fmt.Sprint(code), url, "", r.RequestURI).Inc()
 }
 
 const logo = "<text class='logo1'>ZERM</text> <text class='logo2'>ONLINE</text>"
@@ -154,6 +160,8 @@ func main() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		Info(fmt.Sprintf("Got an %s request from %s (%s): %s (%s)",
 			r.Proto, r.RemoteAddr, r.UserAgent(), r.URL.Path, r.Host))
+		userAgents.WithLabelValues(r.UserAgent()).Inc()
+		requests.WithLabelValues(r.Method, r.RequestURI).Inc()
 		if lastUpdate.Add(60 * time.Second).Before(time.Now()) {
 			update()
 		}
@@ -166,9 +174,7 @@ func main() {
 				notFound(w, r)
 				return
 			}
-			Info("Redirecting:", url)
-			http.Redirect(w, r, url, 307)
-			queries.WithLabelValues("307", r.RequestURI, "", r.Host, r.Method, r.RequestURI, r.UserAgent()).Inc()
+			redirect(w, r, url, 307)
 		} else if r.RequestURI == "/" || strings.HasPrefix(r.RequestURI, "/index") {
 			writeHeader(w, r, 200, "", "text/html")
 
