@@ -18,7 +18,9 @@ x86 {
     !GOOS=linux GOARCH=amd64 go build -o jasmin-x86 -v -a
 }
 
-release (x86 arm) {}
+release (x86 arm) {
+    !sha256sum jasmin-*
+}
 
 clean {
     !rm -f jasmin-*

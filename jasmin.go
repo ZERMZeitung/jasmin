@@ -168,7 +168,7 @@ func main() {
 			}
 			Info("Redirecting:", url)
 			http.Redirect(w, r, url, 307)
-			queries.WithLabelValues("307", "short found").Inc()
+			queries.WithLabelValues("307", r.RequestURI, "", r.Host, r.Method, r.RequestURI, r.UserAgent()).Inc()
 		} else if r.RequestURI == "/" || strings.HasPrefix(r.RequestURI, "/index") {
 			writeHeader(w, r, 200, "", "text/html")
 
