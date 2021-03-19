@@ -50,15 +50,15 @@ func update() error {
 }
 
 func articlePreprocess(raw []byte) []byte {
-	cum := regexp.MustCompile("\\\\,").ReplaceAll(raw, []byte("„"))
-	cum = regexp.MustCompile("\\\\'").ReplaceAll(raw, []byte("“"))
-	cum = regexp.MustCompile("\\\\{").ReplaceAll(cum, []byte("[\\ob\\ich\\lost\\bin]("))
-	return regexp.MustCompile("\\\\}").ReplaceAll(cum, []byte(")"))
+	cum := regexp.MustCompile(`\\,`).ReplaceAll(raw, []byte("„"))
+	cum = regexp.MustCompile(`\\'`).ReplaceAll(cum, []byte("“"))
+	cum = regexp.MustCompile(`\\{`).ReplaceAll(cum, []byte(`[\ob\ich\lost\bin](`))
+	return regexp.MustCompile(`\\}`).ReplaceAll(cum, []byte(")"))
 }
 
 func articlePostprocess(raw []byte) []byte {
 	i := 0
-	return regexp.MustCompile("\\\\ob\\\\ich\\\\lost\\\\bin").ReplaceAllFunc(raw, func(b []byte) []byte {
+	return regexp.MustCompile(`\\ob\\ich\\lost\\bin`).ReplaceAllFunc(raw, func(b []byte) []byte {
 		i++
 		return []byte(fmt.Sprintf("<sup>[%d]</sup>", i))
 	})
