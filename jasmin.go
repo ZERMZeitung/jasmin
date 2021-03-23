@@ -257,13 +257,15 @@ func main() {
 				fmt.Fprintln(w, "]]></description>")
 			}
 		} else if strings.HasPrefix(r.RequestURI, "/zerm/") {
+			articleUrl := strings.TrimSuffix(r.RequestURI, ".html")
+			articleUrl = strings.TrimSuffix(articleUrl, ".md")
 			var article article
 			found := false
 
 			articles := allArticles
 
 			for _, a := range articles {
-				if "/zerm/"+a.URL == r.RequestURI {
+				if "/zerm/"+a.URL == articleUrl {
 					article = a
 					found = true
 					break
@@ -275,7 +277,7 @@ func main() {
 				return
 			}
 
-			html, err := getHTMLArticle(r.RequestURI)
+			html, err := getHTMLArticle(articleUrl)
 			if err != nil {
 				internalServerError(w, r, err)
 				return
