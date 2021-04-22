@@ -1,0 +1,36 @@
+before:
+  hooks:
+    - go mod tidy
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - 386
+      - amd64
+      - arm
+      - arm64
+      - riscv
+      - riscv64
+archives:
+  - replacements:
+      386: i386
+      amd64: x86_64
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ .Tag }}"
+changelog:
+  sort: asc
+nfpms:
+  - maintainer: ZERM Team <zerm@chrissx.de>
+    description: The current ZERM backend
+    homepage: https://github.com/ZERMZeitung/jasmin
+    license: MPLv2
+    formats:
+      - deb
+      - rpm
+      - apk
