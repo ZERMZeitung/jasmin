@@ -163,7 +163,12 @@ func main() {
 		userAgents.WithLabelValues(r.UserAgent()).Inc()
 		requests.WithLabelValues(r.Method, r.RequestURI).Inc()
 		if lastUpdate.Add(60 * time.Second).Before(time.Now()) {
-			update()
+			err := update()
+			if err == nil {
+				Info("Update succeeded.")
+			} else {
+				Err(err)
+			}
 		}
 		if r.Method != "GET" {
 			writeHeader(w, r, 400, "", "text/plain")
