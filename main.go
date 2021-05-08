@@ -15,9 +15,9 @@ import (
 )
 
 //TODO:
-// - sort articles by datetime
 // - logo exception for Safari because the font is broken
 // - put a lot of the static html in separate files
+// - maybe testing
 
 type article struct {
 	Author    string

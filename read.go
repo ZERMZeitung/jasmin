@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/csv"
 	"os"
+	"sort"
 	"time"
 )
 
@@ -24,11 +25,15 @@ func parseArticles(file string) ([]article, error) {
 	for i, line := range lines {
 		pub, err := time.Parse("02.01.2006 15:04:05 MST", line[0])
 		if err != nil {
-			Err("Can't parse time ", line[0], "of article ", line[1])
+			Err("Can't parse time", line[0], "of article", line[1])
 			return nil, err
 		}
 		articles[i] = article{Author: line[3], URL: line[1], ID: line[4], Title: line[2], Published: pub}
 	}
+
+	sort.Slice(articles, func(p, q int) bool {
+		return articles[p].Published.After(articles[q].Published)
+	})
 
 	return articles, nil
 }
