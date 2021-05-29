@@ -32,7 +32,11 @@ var allArticles []article
 var shortLut map[string]string
 var htmlCache map[string][]byte
 var lastUpdate = time.Unix(0, 0)
-var rootDir = "/var/www/zerm.eu"
+var rootDir = envWithDefault("JASMIN_ROOT_DIR", "/var/www/zerm.eu")
+var httpAddr = envWithDefault("JASMIN_HTTP_ADDR", ":8099")
+var httpsAddr = os.Getenv("JASMIN_HTTPS_ADDR")
+var certFile = os.Getenv("JASMIN_CERT_FILE")
+var keyFile = os.Getenv("JASMIN_KEY_FILE")
 
 func update() error {
 	articles, err := parseArticles(rootDir + "/articles.csv")
@@ -148,11 +152,16 @@ func redirect(w http.ResponseWriter, r *http.Request, url string, code int) {
 
 const logo = "<text class='logo1'>ZERM</text> <text class='logo2'>ONLINE</text>"
 
-func main() {
-	if len(os.Args) > 1 {
-		rootDir = os.Args[1]
+func envWithDefault(key string, def string) string {
+	env := os.Getenv(key)
+	if env == "" {
+		return def
+	} else {
+		return env
 	}
+}
 
+func main() {
 	err := update()
 	if err != nil {
 		Fatal(err)
@@ -384,5 +393,9 @@ func main() {
 		}
 	})
 
-	Fatal(http.ListenAndServe(":8099", nil))
+	if httpsAddr == "" {
+		Fatal(http.ListenAndServe(httpAddr, nil))
+	} else {
+		Fatal(http.ListenAndServeTLS(httpsAddr, certFile, keyFile, nil))
+	}
 }
