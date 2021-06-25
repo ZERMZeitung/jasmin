@@ -15,7 +15,7 @@ import (
 )
 
 //TODO:
-// - logo exception for Safari because the font is broken
+// - logo exception for Safari and FF because the font is broken
 // - put a lot of the static html in separate files
 // - systemd based logging
 // - maybe testing

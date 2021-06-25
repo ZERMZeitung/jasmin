@@ -28,7 +28,9 @@ func parseArticles(file string) ([]article, error) {
 			Err("Can't parse time", line[0], "of article", line[1])
 			return nil, err
 		}
-		articles[i] = article{Author: line[3], URL: line[1], ID: line[4], Title: line[2], Published: pub}
+		if time.Now().After(pub) {
+			articles[i] = article{Author: line[3], URL: line[1], ID: line[4], Title: line[2], Published: pub}
+		}
 	}
 
 	sort.Slice(articles, func(p, q int) bool {
