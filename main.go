@@ -15,7 +15,7 @@ import (
 )
 
 //TODO:
-// - logo exception for Safari and FF because the font is broken
+// - investigate Woodcut, maybe file an issue at FF
 // - put a lot of the static html in separate files
 // - systemd based logging
 // - maybe testing
