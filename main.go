@@ -140,9 +140,9 @@ func htmlHeader(w http.ResponseWriter, title string, body func(w http.ResponseWr
 		"<link rel='stylesheet' type='text/css' href='/style.css'>"+
 		"</head><body><center class='header'>"+logo+"<br/><br/><div class='hlinks'>")
 	for y := time.Now().Year(); y >= 2019; y-- {
-		fmt.Fprintf(w, "<a href='%d' class='hlink'>GA %d</a> ", y, y)
+		fmt.Fprintf(w, "<a href='/%d' class='hlink'>GA %d</a> ", y, y)
 	}
-	fmt.Fprint(w, "<a href='rss.xml' class='hlink'>RSS Feed</a></div></center>")
+	fmt.Fprint(w, "<a href='/rss.xml' class='hlink'>RSS Feed</a></div></center>")
 	body(w)
 	fmt.Fprint(w, "</body></html>")
 }
