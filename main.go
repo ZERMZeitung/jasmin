@@ -133,6 +133,20 @@ func writeHeader(w http.ResponseWriter, r *http.Request, code int, info string, 
 	responses.WithLabelValues(fmt.Sprint(code), info, contentType, r.RequestURI).Inc()
 }
 
+func htmlHeader(w http.ResponseWriter, title string, body func(w http.ResponseWriter)) {
+	fmt.Fprint(w, "<html><head><title>"+title+"</title>"+
+		"<meta charset='utf-8'/>"+
+		"<meta name='robots' content='index,follow'/>"+
+		"<link rel='stylesheet' type='text/css' href='/style.css'>"+
+		"</head><body><center class='header'>"+logo+"<br/><br/><div class='hlinks'>")
+	for y := time.Now().Year(); y >= 2019; y-- {
+		fmt.Fprintf(w, "<a href='%d' class='hlink'>GA %d</a> ", y, y)
+	}
+	fmt.Fprint(w, "<a href='rss.xml' class='hlink'>RSS Feed</a></div></center>")
+	body(w)
+	fmt.Fprint(w, "</body></html>")
+}
+
 func internalServerError(w http.ResponseWriter, r *http.Request, err error) {
 	writeHeader(w, r, 500, fmt.Sprint(err), "text/plain")
 	fmt.Fprintln(w, err)
@@ -150,7 +164,7 @@ func redirect(w http.ResponseWriter, r *http.Request, url string, code int) {
 	responses.WithLabelValues(fmt.Sprint(code), url, "", r.RequestURI).Inc()
 }
 
-const logo = "<text class='logo1'>ZERM</text> <text class='logo2'>ONLINE</text>"
+const logo = "<a href='/'><text class='logo1'>ZERM</text> <text class='logo2'>ONLINE</text></a>"
 
 func envWithDefault(key string, def string) string {
 	env := os.Getenv(key)
@@ -193,33 +207,21 @@ func main() {
 		} else if r.RequestURI == "/" || strings.HasPrefix(r.RequestURI, "/index") {
 			writeHeader(w, r, 200, "", "text/html")
 
-			fmt.Fprint(w, "<html><head>")
-			fmt.Fprint(w, "<title>ZERM Online</title>")
-			fmt.Fprint(w, "<meta charset='utf-8'/>")
-			fmt.Fprint(w, "<meta name='robots' content='index,follow'/>")
-			fmt.Fprint(w, "<link rel='stylesheet' type='text/css' href='style.css'>")
-			fmt.Fprint(w, "</head><body>")
-			fmt.Fprint(w, logo)
-			fmt.Fprint(w, "<br/><br/>")
-			for y := time.Now().Year(); y >= 2019; y-- {
-				fmt.Fprintf(w, "<a href='%d'>GA %d</a> ", y, y)
-			}
-			fmt.Fprint(w, "<a href='rss.xml'>RSS Feed</a>")
-			fmt.Fprint(w, "<ul>")
+			htmlHeader(w, "ZERM Online", func(w http.ResponseWriter) {
+				fmt.Fprint(w, "<ul>")
 
-			articles := allArticles
+				articles := allArticles
 
-			for _, article := range articles {
-				fmt.Fprint(w, "<li>")
-				fmt.Fprint(w, article.Published.Format("02.01.2006"))
-				fmt.Fprint(w, " &ndash; <a href='zerm/")
-				fmt.Fprint(w, article.URL)
-				fmt.Fprint(w, "'>")
-				fmt.Fprint(w, article.Title)
-				fmt.Fprint(w, "</a></li>")
-			}
+				for _, article := range articles {
+					fmt.Fprint(w, "<li>")
+					fmt.Fprint(w, article.Published.Format("02.01.2006"))
+					fmt.Fprint(w, " &ndash; <a href='zerm/"+article.URL+"'>")
+					fmt.Fprint(w, article.Title)
+					fmt.Fprint(w, "</a></li>")
+				}
 
-			fmt.Fprint(w, "</ul></body></html>")
+				fmt.Fprint(w, "</ul>")
+			})
 		} else if r.RequestURI == "/sitemap.xml" {
 			writeHeader(w, r, 200, "", "text/xml")
 
@@ -273,7 +275,6 @@ func main() {
 			}
 		} else if strings.HasPrefix(r.RequestURI, "/zerm/") {
 			articleUrl := strings.TrimSuffix(r.RequestURI, ".html")
-			articleUrl = strings.TrimSuffix(articleUrl, ".md")
 			var article article
 			found := false
 
@@ -306,17 +307,15 @@ func main() {
 
 			writeHeader(w, r, 200, "", "text/html")
 
-			fmt.Fprint(w, "<html><head><title>")
-			fmt.Fprint(w, article.Title)
-			fmt.Fprint(w, "</title>")
-			fmt.Fprint(w, "<link rel='stylesheet' type='text/css' href='../style.css'>")
-			fmt.Fprint(w, "</head><body><a href='/'>zurück</a><h1>")
-			fmt.Fprint(w, article.Title)
-			fmt.Fprint(w, "</h1>")
-			w.Write(html)
-			fmt.Fprint(w, "<br/><footer>von <strong>")
-			w.Write(author)
-			fmt.Fprint(w, "</strong></footer></body></html>")
+			htmlHeader(w, article.Title, func(w http.ResponseWriter) {
+				fmt.Fprint(w, "<h1>")
+				fmt.Fprint(w, article.Title)
+				fmt.Fprint(w, "</h1>")
+				w.Write(html)
+				fmt.Fprint(w, "<br/><footer>von <strong>")
+				w.Write(author)
+				fmt.Fprint(w, "</strong></footer>")
+			})
 		} else if regexp.MustCompile("^/20[0-9]{2}(.html)?$").MatchString(r.RequestURI) {
 			s := strings.TrimSuffix(strings.TrimPrefix(r.RequestURI, "/"), ".html")
 			year, err := strconv.ParseUint(s, 10, 32)
@@ -327,6 +326,7 @@ func main() {
 
 			writeHeader(w, r, 200, "", "text/html")
 
+			// TODO: use `htmlHeader` here
 			fmt.Fprint(w, "<html><head><title>ZERM GA ", year)
 			fmt.Fprint(w, "</title><meta charset='utf-8'/>")
 			fmt.Fprint(w, "<link rel='stylesheet' type='text/css' href='style.css'>")
