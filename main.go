@@ -133,12 +133,16 @@ func writeHeader(w http.ResponseWriter, r *http.Request, code int, info string, 
 	responses.WithLabelValues(fmt.Sprint(code), info, contentType, r.RequestURI).Inc()
 }
 
-func htmlHeader(w http.ResponseWriter, title string, body func(w http.ResponseWriter)) {
+func htmlHeader(w http.ResponseWriter, title string, subtitle string, body func(w http.ResponseWriter)) {
 	fmt.Fprint(w, "<html><head><title>"+title+"</title>"+
 		"<meta charset='utf-8'/>"+
 		"<meta name='robots' content='index,follow'/>"+
 		"<link rel='stylesheet' type='text/css' href='/style.css'>"+
-		"</head><body><center class='header'>"+logo+"<br/><br/><div class='hlinks'>")
+		"</head><body><center class='header'>"+logo+"<br/>")
+	if subtitle != "" {
+		fmt.Fprint(w, subtitle, "<br/>")
+	}
+	fmt.Fprint(w, "<div class='hlinks'>")
 	for y := time.Now().Year(); y >= 2019; y-- {
 		fmt.Fprintf(w, "<a href='/%d' class='hlink'>GA %d</a> ", y, y)
 	}
@@ -207,7 +211,7 @@ func main() {
 		} else if r.RequestURI == "/" || strings.HasPrefix(r.RequestURI, "/index") {
 			writeHeader(w, r, 200, "", "text/html")
 
-			htmlHeader(w, "ZERM Online", func(w http.ResponseWriter) {
+			htmlHeader(w, "ZERM Online", "", func(w http.ResponseWriter) {
 				fmt.Fprint(w, "<ul>")
 
 				articles := allArticles
@@ -307,7 +311,7 @@ func main() {
 
 			writeHeader(w, r, 200, "", "text/html")
 
-			htmlHeader(w, article.Title, func(w http.ResponseWriter) {
+			htmlHeader(w, article.Title, "", func(w http.ResponseWriter) {
 				fmt.Fprint(w, "<h1>")
 				fmt.Fprint(w, article.Title)
 				fmt.Fprint(w, "</h1>")
@@ -326,60 +330,49 @@ func main() {
 
 			writeHeader(w, r, 200, "", "text/html")
 
-			// TODO: use `htmlHeader` here
-			fmt.Fprint(w, "<html><head><title>ZERM GA ", year)
-			fmt.Fprint(w, "</title><meta charset='utf-8'/>")
-			fmt.Fprint(w, "<link rel='stylesheet' type='text/css' href='style.css'>")
-			fmt.Fprint(w, "</head><body>")
-			fmt.Fprint(w, "<text class='logo1'>ZERM</text> ")
-			fmt.Fprint(w, "<text class='logo2'>ONLINE</text> ")
-			fmt.Fprint(w, "<text class='logo1'>G</text>")
-			fmt.Fprint(w, "<text class='logo2'>esamt</text> ")
-			fmt.Fprint(w, "<text class='logo1'>A</text>")
-			fmt.Fprint(w, "<text class='logo2'>usgabe</text>")
-			fmt.Fprint(w, "<text class='logo1'>", year, "</text>")
+			htmlHeader(w, fmt.Sprint("ZERM GA ", year), fmt.Sprint("<text class='ga1'>G</text><text class='ga2'>esamt</text> <text class='ga1'>A</text><text class='ga2'>usgabe</text> <text class='ga1'>", year, "</text>"), func(w http.ResponseWriter) {
+				fmt.Fprint(w, "<br/>")
 
-			_, e1 := readFile(fmt.Sprint("/", year, ".pdf"))
-			_, e2 := readFile(fmt.Sprint("/", year, ".svg"))
-			if e1 == nil && e2 == nil {
-				fmt.Fprint(w, "<p><i>Die Druckversion finden Sie auch als <a href='")
-				fmt.Fprint(w, year, ".pdf'>PDF</a> mit einer <a href='", year)
-				fmt.Fprint(w, ".svg'>separaten Vorderseite</a>.</i></p>")
-			}
-
-			articles := allArticles
-
-			for _, article := range articles {
-				if article.Published.Year() != int(year) {
-					continue
-				}
-				fmt.Fprint(w, "<div class='entry'>")
-				fmt.Fprint(w, "<h2 id='", article.URL, "'>", article.Title, "</h2>")
-				fmt.Fprint(w, "<small>[<a href='#", article.URL, "'>link</a>&mdash;")
-				fmt.Fprint(w, "<a href='zerm/", article.URL, ".html'>standalone</a>]")
-				fmt.Fprint(w, "</small><br/>")
-
-				html, err := getHTMLArticle("/zerm/" + article.URL)
-				if err != nil {
-					fmt.Fprintln(w, err)
-				} else {
-					w.Write(html)
-					fmt.Fprintln(w)
+				_, e1 := readFile(fmt.Sprint("/", year, ".pdf"))
+				_, e2 := readFile(fmt.Sprint("/", year, ".svg"))
+				if e1 == nil && e2 == nil {
+					fmt.Fprint(w, "<p><i>Die Druckversion finden Sie auch als <a href='")
+					fmt.Fprint(w, year, ".pdf'>PDF</a> mit einer <a href='", year)
+					fmt.Fprint(w, ".svg'>separaten Vorderseite</a>.</i></p>")
 				}
 
-				author, err := readFile("/authors/" + article.Author + ".html")
-				if err != nil {
-					fmt.Fprint(w, err)
-				} else {
-					fmt.Fprint(w, "<small>von <strong>")
-					w.Write(author)
-					fmt.Fprint(w, "</strong></small><br/>")
+				articles := allArticles
+
+				for _, article := range articles {
+					if article.Published.Year() != int(year) {
+						continue
+					}
+					fmt.Fprint(w, "<div class='entry'>")
+					fmt.Fprint(w, "<h2 id='", article.URL, "'>", article.Title, "</h2>")
+					fmt.Fprint(w, "<small>[<a href='#", article.URL, "'>link</a>&mdash;")
+					fmt.Fprint(w, "<a href='zerm/", article.URL, ".html'>standalone</a>]")
+					fmt.Fprint(w, "</small><br/>")
+
+					html, err := getHTMLArticle("/zerm/" + article.URL)
+					if err != nil {
+						fmt.Fprintln(w, err)
+					} else {
+						w.Write(html)
+						fmt.Fprintln(w)
+					}
+
+					author, err := readFile("/authors/" + article.Author + ".html")
+					if err != nil {
+						fmt.Fprint(w, err)
+					} else {
+						fmt.Fprint(w, "<small>von <strong>")
+						w.Write(author)
+						fmt.Fprint(w, "</strong></small><br/>")
+					}
+
+					fmt.Fprint(w, "<small>", article.Published.Format("02.01.2006 15:04 MST"), "</small></div>")
 				}
-
-				fmt.Fprint(w, "<small>", article.Published.Format("02.01.2006 15:04 MST"), "</small></div>")
-			}
-
-			fmt.Fprint(w, "</body></html>")
+			})
 		} else {
 			b, err := readFile(r.RequestURI)
 
