@@ -15,6 +15,7 @@ import (
 )
 
 //TODO:
+// - why tf isnt the twitter button there
 // - investigate Woodcut, maybe file an issue at FF
 // - put a lot of the static html in separate files
 // - systemd based logging

@@ -8,18 +8,18 @@ import (
 )
 
 var userAgents = prometheus.NewCounterVec(prometheus.CounterOpts{
-	Name: "user_agents",
-	Help: "User Agents",
+	Name: "jasmin_user_agents",
+	Help: "HTTP User Agents",
 }, []string{"user_agent"})
 
 var requests = prometheus.NewCounterVec(prometheus.CounterOpts{
-	Name: "requests",
-	Help: "Requests",
+	Name: "jasmin_requests",
+	Help: "HTTP Requests",
 }, []string{"method", "req_uri"})
 
 var responses = prometheus.NewCounterVec(prometheus.CounterOpts{
-	Name: "responses",
-	Help: "Responses",
+	Name: "jasmin_responses",
+	Help: "HTTP Responses",
 }, []string{"code", "info", "content_type", "req_uri"})
 
 func init() {
