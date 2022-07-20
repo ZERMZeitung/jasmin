@@ -135,7 +135,7 @@ func writeHeader(w http.ResponseWriter, r *http.Request, code int, info string, 
 }
 
 func htmlHeader(w http.ResponseWriter, title string, subtitle string, body func(w http.ResponseWriter)) {
-	fmt.Fprint(w, "<html><head><title>"+title+"</title>"+
+	fmt.Fprint(w, "<!doctype html><html lang=de><head><title>"+title+"</title>"+
 		"<meta charset='utf-8'/>"+
 		"<meta name='robots' content='index,follow'/>"+
 		"<link rel='stylesheet' type='text/css' href='/style.css'>"+
