@@ -129,8 +129,11 @@ func getHTMLArticle(reqURI string) ([]byte, error) {
 }
 
 func writeHeader(w http.ResponseWriter, r *http.Request, code int, info string, contentType string) {
+	if !strings.HasSuffix(contentType, "; charset=utf-8") {
+		contentType += "; charset=utf-8"
+	}
+	w.Header().Add("Content-Type", contentType)
 	w.WriteHeader(code)
-	w.Header().Add("Content-Type", contentType+"; charset=utf-8")
 	responses.WithLabelValues(fmt.Sprint(code), info, contentType, r.RequestURI).Inc()
 }
 
