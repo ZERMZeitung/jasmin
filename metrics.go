@@ -1,10 +1,8 @@
 package main
 
 import (
-	"net/http"
-
+	"github.com/chrissxMedia/cm3.go"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var userAgents = prometheus.NewCounterVec(prometheus.CounterOpts{
@@ -23,8 +21,5 @@ var responses = prometheus.NewCounterVec(prometheus.CounterOpts{
 }, []string{"code", "info", "content_type", "req_uri"})
 
 func init() {
-	prometheus.MustRegister(requests)
-	prometheus.MustRegister(responses)
-	prometheus.MustRegister(userAgents)
-	http.Handle("/metrics", promhttp.Handler())
+	cm3.HandleMetrics(requests, responses, userAgents)
 }

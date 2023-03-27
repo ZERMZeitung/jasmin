@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"log"
 	"mime"
 	"net/http"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/chrissxMedia/cm3.go"
 	"github.com/gomarkdown/markdown"
 )
 
@@ -186,12 +188,10 @@ func envWithDefault(key string, def string) string {
 func main() {
 	err := update()
 	if err != nil {
-		Fatal(err)
+		log.Fatalln("[Fatal]" + " " + fmt.Sprint(err))
 	}
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		Info(fmt.Sprintf("Got an %s request from %s (%s): %s (%s)",
-			r.Proto, r.RemoteAddr, r.UserAgent(), r.URL.Path, r.Host))
+	cm3.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		userAgents.WithLabelValues(r.UserAgent()).Inc()
 		requests.WithLabelValues(r.Method, r.RequestURI).Inc()
 		if lastUpdate.Add(60 * time.Second).Before(time.Now()) {
@@ -391,8 +391,8 @@ func main() {
 	})
 
 	if httpsAddr == "" {
-		Fatal(http.ListenAndServe(httpAddr, nil))
+		cm3.ListenAndServeHttp(httpAddr, nil)
 	} else {
-		Fatal(http.ListenAndServeTLS(httpsAddr, certFile, keyFile, nil))
+		cm3.ListenAndServeHttps(httpsAddr, certFile, keyFile, nil)
 	}
 }
