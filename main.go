@@ -20,7 +20,6 @@ import (
 // - why tf isnt the twitter button there
 // - investigate Woodcut, maybe file an issue at FF
 // - put a lot of the static html in separate files
-// - systemd based logging
 // - maybe testing
 
 type article struct {
@@ -33,7 +32,6 @@ type article struct {
 
 var allArticles []article
 var shortLut map[string]string
-var htmlCache map[string][]byte
 var lastUpdate = time.Unix(0, 0)
 var rootDir = envWithDefault("JASMIN_ROOT_DIR", "/var/www/zerm.eu")
 var httpAddr = envWithDefault("JASMIN_HTTP_ADDR", ":8099")
@@ -50,7 +48,6 @@ func update() error {
 
 	shortLut = genShortLut(articles)
 	allArticles = articles
-	htmlCache = make(map[string][]byte)
 
 	lastUpdate = time.Now()
 	Info("Flushed the cache.")
@@ -113,20 +110,13 @@ func getHTMLArticle(reqURI string) ([]byte, error) {
 		reqURI += ".md"
 	}
 
-	html, ok := htmlCache[reqURI]
-	if ok {
-		Info("The HTML cache actually helped!")
-		return html, nil
-	}
-
 	md, err := readFile(reqURI)
 	if err != nil {
 		Warn("Can't read HTML article ", reqURI, ": ", err)
 		return nil, err
 	}
 
-	html = articlePostprocess(markdown.ToHTML(articlePreprocess(md), nil, nil))
-	htmlCache[reqURI] = html
+	html := articlePostprocess(markdown.ToHTML(articlePreprocess(md), nil, nil))
 	return html, nil
 }
 
@@ -283,6 +273,7 @@ func main() {
 			}
 		} else if strings.HasPrefix(r.RequestURI, "/zerm/") {
 			articleUrl := strings.TrimSuffix(r.RequestURI, ".html")
+			articleUrl = strings.TrimSuffix(r.RequestURI, ".md")
 			var article article
 			found := false
 
