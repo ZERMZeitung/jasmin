@@ -45,4 +45,4 @@ jobs:
           push: true
           context: .
           platforms: linux/amd64,linux/i386,linux/arm64,linux/arm
-          tags: ghcr.io/ZERMZeitung/jasmin:latest
+          tags: ghcr.io/zermzeitung/jasmin:latest
