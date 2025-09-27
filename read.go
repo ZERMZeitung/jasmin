@@ -10,7 +10,6 @@ import (
 func parseArticles(file string) ([]article, error) {
 	f, err := os.OpenFile(file, os.O_RDONLY, 0o644)
 	if err != nil {
-		Err("Can't read article file:", err)
 		return nil, err
 	}
 	defer f.Close()

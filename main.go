@@ -51,7 +51,6 @@ func envWithDefault(key string, def string) string {
 func update() error {
 	articles, err := parseArticles(rootDir + "/articles.csv")
 	if err != nil {
-		Err("Can't update articles: ", err)
 		return err
 	}
 
@@ -59,7 +58,6 @@ func update() error {
 	allArticles = articles
 
 	lastUpdate = time.Now()
-	Info("Flushed the cache.")
 	return nil
 }
 
@@ -138,6 +136,8 @@ func writeHeader(w http.ResponseWriter, r *http.Request, code int, info string, 
 	responses.WithLabelValues(fmt.Sprint(code), info, contentType, r.RequestURI).Inc()
 }
 
+const logo = "<a href='/'><text class='logo1'>ZERM</text> <text class='logo2'>ONLINE</text></a>"
+
 func htmlHeader(w http.ResponseWriter, title string, subtitle string, body func(w http.ResponseWriter)) {
 	fmt.Fprint(w, "<!doctype html><html lang=de><head><title>"+title+"</title>"+
 		"<meta charset='utf-8'/>"+
@@ -148,9 +148,15 @@ func htmlHeader(w http.ResponseWriter, title string, subtitle string, body func(
 		fmt.Fprint(w, subtitle, "<br/>")
 	}
 	fmt.Fprint(w, "<div class='hlinks'>")
+	// TODO: cache half of the header
+	articles := allArticles
 	for y := time.Now().Year(); y >= 2019; y-- {
-		// TODO: if there are articles
-		fmt.Fprintf(w, "<a href='/%d' class='hlink'>GA %d</a> ", y, y)
+		for _, a := range articles {
+			if a.Published.Year() == y {
+				fmt.Fprintf(w, "<a href='/%d' class='hlink'>GA %d</a> ", y, y)
+				break
+			}
+		}
 	}
 	fmt.Fprint(w, "<a href='/rss.xml' class='hlink'>RSS Feed</a></div></center>")
 	body(w)
@@ -174,12 +180,14 @@ func redirect(w http.ResponseWriter, r *http.Request, url string, code int) {
 	responses.WithLabelValues(fmt.Sprint(code), url, "", r.RequestURI).Inc()
 }
 
-const logo = "<a href='/'><text class='logo1'>ZERM</text> <text class='logo2'>ONLINE</text></a>"
-
 func main() {
+	//log.SetFlags(log.LstdFlags | log.Lshortfile)
+
 	err := update()
 	if err != nil {
-		log.Fatalln("[Fatal]" + " " + fmt.Sprint(err))
+		log.Fatalln("[Fatal]", fmt.Sprint(err))
+	} else {
+		Info("Cache populated.")
 	}
 
 	cm3.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -188,9 +196,9 @@ func main() {
 		if lastUpdate.Add(60 * time.Second).Before(time.Now()) {
 			err := update()
 			if err == nil {
-				Info("Update succeeded.")
+				Info("Flushed the cache.")
 			} else {
-				Err(err)
+				Err("Cache update failed:", err)
 			}
 		}
 		if r.Method != "GET" {
