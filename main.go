@@ -274,7 +274,7 @@ func main() {
 			}
 		} else if strings.HasPrefix(r.RequestURI, "/zerm/") {
 			articleUrl := strings.TrimSuffix(r.RequestURI, ".html")
-			articleUrl = strings.TrimSuffix(r.RequestURI, ".md")
+			articleUrl = strings.TrimSuffix(articleUrl, ".md")
 			var article article
 			found := false
 
