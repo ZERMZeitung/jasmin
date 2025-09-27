@@ -39,6 +39,15 @@ var httpsAddr = os.Getenv("JASMIN_HTTPS_ADDR")
 var certFile = os.Getenv("JASMIN_CERT_FILE")
 var keyFile = os.Getenv("JASMIN_KEY_FILE")
 
+func envWithDefault(key string, def string) string {
+	env := os.Getenv(key)
+	if env == "" {
+		return def
+	} else {
+		return env
+	}
+}
+
 func update() error {
 	articles, err := parseArticles(rootDir + "/articles.csv")
 	if err != nil {
@@ -140,6 +149,7 @@ func htmlHeader(w http.ResponseWriter, title string, subtitle string, body func(
 	}
 	fmt.Fprint(w, "<div class='hlinks'>")
 	for y := time.Now().Year(); y >= 2019; y-- {
+		// TODO: if there are articles
 		fmt.Fprintf(w, "<a href='/%d' class='hlink'>GA %d</a> ", y, y)
 	}
 	fmt.Fprint(w, "<a href='/rss.xml' class='hlink'>RSS Feed</a></div></center>")
@@ -165,15 +175,6 @@ func redirect(w http.ResponseWriter, r *http.Request, url string, code int) {
 }
 
 const logo = "<a href='/'><text class='logo1'>ZERM</text> <text class='logo2'>ONLINE</text></a>"
-
-func envWithDefault(key string, def string) string {
-	env := os.Getenv(key)
-	if env == "" {
-		return def
-	} else {
-		return env
-	}
-}
 
 func main() {
 	err := update()
