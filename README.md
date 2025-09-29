@@ -24,7 +24,9 @@ Service management is up to the system administrator.
 ### Docker (OCI)
 
 > [!WARNING]
-> Docker deployment is currently being implemented as part of chrissx Media's
-> Project SHACS. It is not production ready or well-tested, use with caution.
+> Docker deployment was recently implemented as part of chrissx Media's
+> Project SHACS. It has not been tested well, use with caution.
 
-Guide TBD.
+```sh
+docker run -d --pull=always --restart=unless-stopped -p8099:8099 -v/path/to/zerm.eu:/var/www/zerm.eu ghcr.io/zermzeitung/jasmin:latest
+```
