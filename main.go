@@ -7,6 +7,7 @@ import (
 	"mime"
 	"net/http"
 	"os"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -385,7 +386,7 @@ func main() {
 				return
 			}
 
-			writeHeader(w, r, 200, "", mime.TypeByExtension(r.RequestURI))
+			writeHeader(w, r, 200, "", mime.TypeByExtension(path.Ext(r.URL.Path)))
 			w.Write(b)
 		}
 	})
