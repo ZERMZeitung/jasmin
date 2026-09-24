@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"html"
 	"log"
 	"mime"
 	"net/http"
@@ -266,8 +267,9 @@ func main() {
 
 			for _, article := range articles {
 				fmt.Fprintln(w, "<item>")
-				fmt.Fprintf(w, "<title>%s</title>\n", article.Title)
+				fmt.Fprintf(w, "<title>%s</title>\n", html.EscapeString(article.Title))
 				fmt.Fprintf(w, "<guid>https://zerm.eu/%d.html#%s</guid>\n", article.Published.Year(), article.URL)
+				fmt.Fprintf(w, "<link>https://zerm.eu/zerm/%s.html</link>\n", article.URL)
 				fmt.Fprintf(w, "<pubDate>%s</pubDate>\n", article.Published.Format("Mon, 2 Jan 2006 15:04:05 -0700"))
 				fmt.Fprintln(w, "<description><![CDATA[")
 
@@ -280,7 +282,9 @@ func main() {
 				}
 
 				fmt.Fprintln(w, "]]></description>")
+				fmt.Fprintln(w, "</item>")
 			}
+			fmt.Fprintln(w, "</channel></rss>")
 		} else if strings.HasPrefix(r.RequestURI, "/zerm/") {
 			articleUrl := strings.TrimSuffix(r.RequestURI, ".html")
 			articleUrl = strings.TrimSuffix(articleUrl, ".md")
