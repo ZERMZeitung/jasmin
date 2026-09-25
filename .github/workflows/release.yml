@@ -11,12 +11,12 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
-          go-version: stable
+          go-version-file: go.mod
       - uses: goreleaser/goreleaser-action@v7
         with:
           args: release --clean
@@ -30,7 +30,7 @@ jobs:
       attestations: write
       id-token: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: docker/setup-qemu-action@v4
