@@ -4,7 +4,19 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
+    groups:
+      all-actions:
+        patterns: ["*"]
+      all-actions-security:
+        applies-to: security-updates
+        patterns: ["*"]
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
       interval: "daily"
+    groups:
+      all-go:
+        patterns: ["*"]
+      all-go-security:
+        applies-to: security-updates
+        patterns: ["*"]
